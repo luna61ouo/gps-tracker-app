@@ -76,10 +76,22 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   }
 
   Future<void> _ensureDefaultRelay() async {
+    const oldUrl = 'wss://legacy-relay.example.com/relay';
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getStringList(kRelayUrlListKey) == null) {
+    var urls = prefs.getStringList(kRelayUrlListKey);
+
+    if (urls == null) {
+      // 第一次安裝
       await prefs.setStringList(kRelayUrlListKey, [kDefaultRelayUrl]);
       await prefs.setString(kRelayUrlKey, kDefaultRelayUrl);
+    } else if (urls.contains(oldUrl)) {
+      // 遷移舊網址
+      urls = urls.map((u) => u == oldUrl ? kDefaultRelayUrl : u).toList();
+      await prefs.setStringList(kRelayUrlListKey, urls);
+      final selected = prefs.getString(kRelayUrlKey);
+      if (selected == oldUrl) {
+        await prefs.setString(kRelayUrlKey, kDefaultRelayUrl);
+      }
     }
   }
 
