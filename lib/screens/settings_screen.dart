@@ -289,12 +289,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               side: BorderSide(color: Colors.grey.shade300),
             ),
             leading: const Icon(Icons.code),
-            title: const Text('開放原始碼'),
+            title: const Text('gps-bridge 原始碼'),
             subtitle: const Text('github.com/myasaliu/gps-bridge'),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
               final uri =
                   Uri.parse('https://github.com/myasaliu/gps-bridge');
+              if (await canLaunchUrl(uri)) launchUrl(uri);
+            },
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            leading: const Icon(Icons.router),
+            title: const Text('gps-relay 原始碼'),
+            subtitle: const Text('github.com/myasaliu/gps-relay'),
+            trailing: const Icon(Icons.open_in_new, size: 16),
+            onTap: () async {
+              final uri =
+                  Uri.parse('https://github.com/myasaliu/gps-relay');
               if (await canLaunchUrl(uri)) launchUrl(uri);
             },
           ),
