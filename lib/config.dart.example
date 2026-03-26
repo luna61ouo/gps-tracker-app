@@ -1,0 +1,9 @@
+// Copy this file to config.dart and fill in your values.
+// config.dart is listed in .gitignore and should never be committed.
+
+// Default relay shown to users in the app (leave empty to require manual setup)
+const String kDefaultRelayUrl = '';
+
+// AdMob (fill in after creating AdMob account)
+const String kAdMobAppId = ''; // e.g. ca-app-pub-xxxxxxxx~xxxxxxxxxx
+const String kBannerAdUnitId = ''; // e.g. ca-app-pub-xxxxxxxx/xxxxxxxxxx

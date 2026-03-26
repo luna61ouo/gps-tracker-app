@@ -6,11 +6,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'config.dart';
 import 'screens/settings_screen.dart';
 import 'services/background_service.dart';
 
 const String kRelayUrlListKey = 'relay_url_list';
-const String kDefaultRelayUrl = 'wss://your-relay.example.com/relay';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
