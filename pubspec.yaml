@@ -1,0 +1,28 @@
+name: frist
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  geolocator: ^13.0.1
+  flutter_background_service: ^5.0.9
+  web_socket_channel: ^3.0.1
+  cryptography: ^2.7.0
+  shared_preferences: ^2.3.3
+  permission_handler: ^11.3.1
+  flutter_local_notifications: ^18.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

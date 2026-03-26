@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"F:/Luke-app/gps-bridge/gps_bridge\")",
+      "Bash(mkdir -p \"F:/Luke-app/gps-bridge/tests\")",
+      "Read(//f/Luke-app/gps-bridge/**)",
+      "Bash(python -m py_compile gps_bridge/__init__.py gps_bridge/crypto.py gps_bridge/config.py gps_bridge/storage.py gps_bridge/server.py gps_bridge/main.py tests/test_crypto.py)",
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(python -c \"import setuptools; print\\(setuptools.__version__\\)\")",
+      "Bash(python -m pytest tests/test_crypto.py -v)",
+      "Bash(gps-bridge --help)",
+      "Bash(gps-bridge keygen:*)",
+      "Bash(gps-bridge serve:*)",
+      "Bash(ssh luke@legacy-relay.example.com \"cat /etc/nginx/conf.d/legacy-relay.example.com.conf\")"
+    ]
+  }
+}
