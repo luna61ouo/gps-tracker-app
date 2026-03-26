@@ -19,6 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _pubKeyController = TextEditingController();
   bool _tokenObscured = true;
   bool _pubKeyObscured = true;
+  int _bgIntervalSeconds = kDefaultBgIntervalSeconds;
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           urls.contains(selected) ? selected : (urls.isNotEmpty ? urls.first : null);
       _tokenController.text = prefs.getString(kTokenKey) ?? '';
       _pubKeyController.text = prefs.getString(kServerPubKeyKey) ?? '';
+      _bgIntervalSeconds = prefs.getInt(kBgIntervalKey) ?? kDefaultBgIntervalSeconds;
     });
   }
 
@@ -49,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString(kRelayUrlKey, _selectedRelayUrl ?? '');
     await prefs.setString(kTokenKey, _tokenController.text.trim());
     await prefs.setString(kServerPubKeyKey, _pubKeyController.text.trim());
+    await prefs.setInt(kBgIntervalKey, _bgIntervalSeconds);
   }
 
   Future<void> _showAddRelayDialog() async {
@@ -188,6 +191,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 tooltip: '新增伺服器',
               ),
             ],
+          ),
+          const SizedBox(height: 24),
+
+          // 更新間隔
+          _SectionHeader(title: '更新間隔', icon: Icons.timer),
+          const SizedBox(height: 8),
+          InputDecorator(
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              helperText: '開啟 App 時固定每 5 秒更新',
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _bgIntervalSeconds,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 30, child: Text('30 秒')),
+                  DropdownMenuItem(value: 60, child: Text('1 分鐘（預設）')),
+                  DropdownMenuItem(value: 120, child: Text('2 分鐘')),
+                  DropdownMenuItem(value: 300, child: Text('5 分鐘')),
+                ],
+                onChanged: (val) {
+                  if (val == null) return;
+                  setState(() => _bgIntervalSeconds = val);
+                  _saveSettings();
+                },
+              ),
+            ),
           ),
           const SizedBox(height: 24),
 

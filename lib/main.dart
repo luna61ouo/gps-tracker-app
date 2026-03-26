@@ -41,7 +41,8 @@ class TrackingHomePage extends StatefulWidget {
   State<TrackingHomePage> createState() => _TrackingHomePageState();
 }
 
-class _TrackingHomePageState extends State<TrackingHomePage> {
+class _TrackingHomePageState extends State<TrackingHomePage>
+    with WidgetsBindingObserver {
   bool _isTracking = false;
   double? _lastLat;
   double? _lastLng;
@@ -53,9 +54,25 @@ class _TrackingHomePageState extends State<TrackingHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkServiceStatus();
     _listenToLocationUpdates();
     _ensureDefaultRelay();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isTracking) return;
+    _notifyServiceInterval(foreground: state == AppLifecycleState.resumed);
+  }
+
+  Future<void> _notifyServiceInterval({required bool foreground}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final interval = prefs.getInt(kBgIntervalKey) ?? kDefaultBgIntervalSeconds;
+    FlutterBackgroundService().invoke('setUpdateInterval', {
+      'foreground': foreground,
+      'interval': interval,
+    });
   }
 
   Future<void> _ensureDefaultRelay() async {
@@ -184,6 +201,7 @@ class _TrackingHomePageState extends State<TrackingHomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationSub?.cancel();
     super.dispose();
   }
@@ -216,39 +234,42 @@ class _TrackingHomePageState extends State<TrackingHomePage> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // 可收合的 GPS 狀態
-          _GpsStatusTile(
-            isTracking: _isTracking,
-            lat: _lastLat,
-            lng: _lastLng,
-            timestamp: _lastTimestamp,
-            gpsError: _lastError,
-            postError: _postError,
+          // 按鈕固定在畫面正中央
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TrackingButton(
+                  isTracking: _isTracking,
+                  onTap: _toggleTracking,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '每 30 秒自動更新 GPS\n端對端加密傳送給 OpenClaw',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
 
-          // 中心圓形追蹤按鈕
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _TrackingButton(
-                    isTracking: _isTracking,
-                    onTap: _toggleTracking,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '每 30 秒自動更新 GPS\n端對端加密傳送給 OpenClaw',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.grey),
-                  ),
-                ],
-              ),
+          // 狀態列懸浮在頂部
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _GpsStatusTile(
+              isTracking: _isTracking,
+              lat: _lastLat,
+              lng: _lastLng,
+              timestamp: _lastTimestamp,
+              gpsError: _lastError,
+              postError: _postError,
             ),
           ),
         ],
