@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../services/background_service.dart';
-import '../main.dart' show kDefaultRelayUrl, kRelayUrlListKey;
+import '../main.dart' show kRelayUrlListKey;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
