@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'l10n/localizations.dart';
 import 'screens/settings_screen.dart';
 import 'services/background_service.dart';
 
@@ -18,21 +19,58 @@ void main() async {
   runApp(const GpsTrackerApp());
 }
 
-class GpsTrackerApp extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Root app — stateful so it can rebuild when language changes
+// ---------------------------------------------------------------------------
+
+class GpsTrackerApp extends StatefulWidget {
   const GpsTrackerApp({super.key});
 
   @override
+  State<GpsTrackerApp> createState() => _GpsTrackerAppState();
+}
+
+class _GpsTrackerAppState extends State<GpsTrackerApp> {
+  @override
+  void initState() {
+    super.initState();
+    appLocale.addListener(_onLocaleChange);
+    _loadSavedLanguage();
+  }
+
+  @override
+  void dispose() {
+    appLocale.removeListener(_onLocaleChange);
+    super.dispose();
+  }
+
+  void _onLocaleChange() => setState(() {});
+
+  Future<void> _loadSavedLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lang = prefs.getString(kLanguageKey) ?? 'auto';
+    appLocale.value = resolveStrings(lang);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'OpenClaw GPS',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+    return AppL10n(
+      strings: appLocale.value,
+      child: MaterialApp(
+        title: appLocale.value.appTitle,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+        ),
+        home: const TrackingHomePage(),
       ),
-      home: const TrackingHomePage(),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Home page
+// ---------------------------------------------------------------------------
 
 class TrackingHomePage extends StatefulWidget {
   const TrackingHomePage({super.key});
@@ -50,6 +88,9 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   String? _lastError;
   String? _postError;
   StreamSubscription? _locationSub;
+  List<_CheckWarning> _warnings = [];
+  Timer? _watchdogTimer;
+  String? _lastSentAt;
 
   @override
   void initState() {
@@ -58,10 +99,15 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     _checkServiceStatus();
     _listenToLocationUpdates();
     _ensureDefaultRelay();
+    _runSelfCheck();
+    _startWatchdog();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _runSelfCheck();
+    }
     if (!_isTracking) return;
     _notifyServiceInterval(foreground: state == AppLifecycleState.resumed);
   }
@@ -81,11 +127,9 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     var urls = prefs.getStringList(kRelayUrlListKey);
 
     if (urls == null) {
-      // 第一次安裝
       await prefs.setStringList(kRelayUrlListKey, [kDefaultRelayUrl]);
       await prefs.setString(kRelayUrlKey, kDefaultRelayUrl);
     } else if (urls.contains(oldUrl)) {
-      // 遷移舊網址
       urls = urls.map((u) => u == oldUrl ? kDefaultRelayUrl : u).toList();
       await prefs.setStringList(kRelayUrlListKey, urls);
       final selected = prefs.getString(kRelayUrlKey);
@@ -98,6 +142,13 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   Future<void> _checkServiceStatus() async {
     final isRunning = await FlutterBackgroundService().isRunning();
     if (mounted) setState(() => _isTracking = isRunning);
+    if (!isRunning) {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(kTrackingEnabledKey) ?? false) {
+        await FlutterBackgroundService().startService();
+        if (mounted) setState(() => _isTracking = true);
+      }
+    }
   }
 
   void _listenToLocationUpdates() {
@@ -111,11 +162,78 @@ class _TrackingHomePageState extends State<TrackingHomePage>
           _lastTimestamp = event['timestamp'] as String?;
           _lastError = null;
           _postError = event['postError'] as String?;
+          if (event['sentAt'] != null) {
+            _lastSentAt = event['sentAt'] as String;
+          }
         } else {
           _lastError = event['error'] as String?;
         }
       });
     });
+  }
+
+  Future<void> _runSelfCheck() async {
+    final s = AppL10n.of(context);
+    final prefs = await SharedPreferences.getInstance();
+    final List<_CheckWarning> warnings = [];
+
+    final locAlways = await Permission.locationAlways.status;
+    if (!locAlways.isGranted) {
+      warnings.add(_CheckWarning(
+        icon: Icons.location_off,
+        color: Colors.red,
+        message: s.warnNoLocationPerm,
+        actionLabel: s.btnGoSettings,
+        onAction: openAppSettings,
+      ));
+    }
+
+    final pubKey = prefs.getString(kServerPubKeyKey) ?? '';
+    if (pubKey.isEmpty) {
+      warnings.add(_CheckWarning(
+        icon: Icons.vpn_key_off,
+        color: Colors.orange,
+        message: s.warnNoPubKey,
+        actionLabel: s.btnGoSettings,
+        onAction: _goToSettings,
+      ));
+    }
+
+    final relayUrl = prefs.getString(kRelayUrlKey) ?? '';
+    final token = prefs.getString(kTokenKey) ?? '';
+    if (relayUrl.isEmpty || token.isEmpty) {
+      warnings.add(_CheckWarning(
+        icon: Icons.cloud_off,
+        color: Colors.orange,
+        message: s.warnNoRelay,
+        actionLabel: s.btnGoSettings,
+        onAction: _goToSettings,
+      ));
+    }
+
+    if (mounted) setState(() => _warnings = warnings);
+  }
+
+  void _startWatchdog() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final shouldTrack = prefs.getBool(kTrackingEnabledKey) ?? false;
+      if (!shouldTrack) return;
+      final isRunning = await FlutterBackgroundService().isRunning();
+      if (!isRunning && mounted) {
+        await FlutterBackgroundService().startService();
+        setState(() => _isTracking = true);
+      }
+    });
+  }
+
+  Future<void> _goToSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    _runSelfCheck();
   }
 
   Future<bool> _requestPermissions() async {
@@ -140,63 +258,79 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   }
 
   Future<void> _toggleTracking() async {
+    final s = AppL10n.of(context);
     final service = FlutterBackgroundService();
     if (_isTracking) {
       service.invoke('stopService');
       setState(() => _isTracking = false);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(kTrackingEnabledKey, false);
       return;
     }
     final hasPermission = await _requestPermissions();
     if (!hasPermission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('需要背景定位權限\n請至設定開啟「永遠允許」定位'),
-            duration: Duration(seconds: 4),
+          SnackBar(
+            content: Text(s.warnNeedBgPerm),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
       return;
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kTrackingEnabledKey, true);
     await service.startService();
     setState(() => _isTracking = true);
   }
 
   void _showHelpDialog() {
+    final s = AppL10n.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('關於 OpenClaw GPS'),
+            const Icon(Icons.info_outline, color: Colors.blue),
+            const SizedBox(width: 8),
+            Text(s.helpTitle),
           ],
         ),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'OpenClaw GPS 是專為 OpenClaw AI 助理設計的背景定位工具。',
-                style: TextStyle(fontWeight: FontWeight.w500),
+                s.helpIntro,
+                style: const TextStyle(fontWeight: FontWeight.w500),
               ),
-              SizedBox(height: 12),
-              Text('運作方式：'),
-              SizedBox(height: 6),
-              Text('1. 手機每 30 秒取得一次 GPS 座標'),
-              Text('2. 座標經過端對端加密（X25519 + AES-256-GCM）'),
-              Text('3. 透過中繼伺服器傳送給你的電腦'),
-              Text('4. OpenClaw 可以詢問你目前的位置'),
-              SizedBox(height: 12),
-              Text('設定方式：'),
-              SizedBox(height: 6),
-              Text('在 OpenClaw 中安裝 gps-bridge，它會提供你 Token 和公鑰，輸入到本 App 的設定中即可完成配對。'),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
+              Text(s.helpHowTitle),
+              const SizedBox(height: 6),
+              Text(s.helpHow1),
+              Text(s.helpHow2),
+              Text(s.helpHow3),
+              Text(s.helpHow4),
+              const SizedBox(height: 12),
+              Text(s.helpModeTitle),
+              const SizedBox(height: 6),
+              Text(s.helpModeAuto),
+              Text(s.helpModeAsk),
+              Text(s.helpModeDeny),
+              const SizedBox(height: 12),
+              Text(s.helpHistoryTitle),
+              const SizedBox(height: 6),
+              Text(s.helpHistoryDesc),
+              const SizedBox(height: 12),
+              Text(s.helpSetupTitle),
+              const SizedBox(height: 6),
+              Text(s.helpSetupDesc),
+              const SizedBox(height: 12),
               Text(
-                '資料安全：伺服器只轉送加密資料，無法讀取你的位置。',
-                style: TextStyle(color: Colors.grey),
+                s.helpPrivacy,
+                style: const TextStyle(color: Colors.grey),
               ),
             ],
           ),
@@ -204,7 +338,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('了解了'),
+            child: Text(s.btnGotIt),
           ),
         ],
       ),
@@ -215,40 +349,39 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationSub?.cancel();
+    _watchdogTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppL10n.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.satellite_alt, size: 20),
-            SizedBox(width: 8),
-            Text('OpenClaw GPS'),
+            const Icon(Icons.satellite_alt, size: 20),
+            const SizedBox(width: 8),
+            Text(s.appTitle),
           ],
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: '設定',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
+            tooltip: s.tooltipSettings,
+            onPressed: _goToSettings,
           ),
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: '說明',
+            tooltip: s.tooltipHelp,
             onPressed: _showHelpDialog,
           ),
         ],
       ),
       body: Stack(
         children: [
-          // 按鈕固定在畫面正中央
+          // 追蹤按鈕永遠置中於整個 body
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -259,7 +392,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  '每 30 秒自動更新 GPS\n端對端加密傳送給 OpenClaw',
+                  s.btnSubtitle,
                   textAlign: TextAlign.center,
                   style: Theme.of(context)
                       .textTheme
@@ -270,18 +403,77 @@ class _TrackingHomePageState extends State<TrackingHomePage>
             ),
           ),
 
-          // 狀態列懸浮在頂部
+          // 狀態列與警告固定於頂部，展開不影響按鈕位置
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: _GpsStatusTile(
-              isTracking: _isTracking,
-              lat: _lastLat,
-              lng: _lastLng,
-              timestamp: _lastTimestamp,
-              gpsError: _lastError,
-              postError: _postError,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _GpsStatusTile(
+                  isTracking: _isTracking,
+                  lat: _lastLat,
+                  lng: _lastLng,
+                  timestamp: _lastTimestamp,
+                  gpsError: _lastError,
+                  postError: _postError,
+                  sentAt: _lastSentAt,
+                ),
+
+                if (_warnings.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                    child: Column(
+                      children: [
+                        for (final w in _warnings)
+                          Card(
+                            color: w.color.withValues(alpha: 0.08),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                  color: w.color.withValues(alpha: 0.3)),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              child: Row(
+                                children: [
+                                  Icon(w.icon, color: w.color, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      w.message,
+                                      style: TextStyle(
+                                          fontSize: 12, color: w.color),
+                                    ),
+                                  ),
+                                  if (w.actionLabel != null &&
+                                      w.onAction != null)
+                                    TextButton(
+                                      onPressed: w.onAction,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: w.color,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(w.actionLabel!,
+                                          style:
+                                              const TextStyle(fontSize: 12)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -291,7 +483,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
 }
 
 // ---------------------------------------------------------------------------
-// 可收合的 GPS 狀態卡片
+// GPS 狀態卡片
 // ---------------------------------------------------------------------------
 
 class _GpsStatusTile extends StatelessWidget {
@@ -302,6 +494,7 @@ class _GpsStatusTile extends StatelessWidget {
     required this.timestamp,
     required this.gpsError,
     required this.postError,
+    required this.sentAt,
   });
 
   final bool isTracking;
@@ -310,9 +503,11 @@ class _GpsStatusTile extends StatelessWidget {
   final String? timestamp;
   final String? gpsError;
   final String? postError;
+  final String? sentAt;
 
   @override
   Widget build(BuildContext context) {
+    final s = AppL10n.of(context);
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       elevation: 1,
@@ -336,7 +531,7 @@ class _GpsStatusTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          isTracking ? '追蹤中' : '已停止',
+          isTracking ? s.statusTracking : s.statusStopped,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: isTracking ? Colors.green : Colors.grey,
@@ -347,7 +542,7 @@ class _GpsStatusTile extends StatelessWidget {
                 '${lat!.toStringAsFixed(5)}, ${lng!.toStringAsFixed(5)}',
                 style: const TextStyle(fontSize: 12),
               )
-            : const Text('尚無定位資料', style: TextStyle(fontSize: 12)),
+            : Text(s.statusNoData, style: const TextStyle(fontSize: 12)),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -359,41 +554,41 @@ class _GpsStatusTile extends StatelessWidget {
                   _InfoRow(
                       icon: Icons.error_outline,
                       iconColor: Colors.red,
-                      label: 'GPS 錯誤',
+                      label: s.labelGpsError,
                       value: gpsError!)
                 else if (lat != null && lng != null) ...[
                   _InfoRow(
                       icon: Icons.my_location,
-                      label: '緯度',
+                      label: s.labelLat,
                       value: lat!.toStringAsFixed(6)),
                   const SizedBox(height: 4),
                   _InfoRow(
                       icon: Icons.my_location,
-                      label: '經度',
+                      label: s.labelLng,
                       value: lng!.toStringAsFixed(6)),
                   if (timestamp != null) ...[
                     const SizedBox(height: 4),
                     _InfoRow(
                         icon: Icons.access_time,
-                        label: '更新時間',
-                        value: timestamp!),
+                        label: s.labelGpsRecord,
+                        value: _formatTime(timestamp)),
                   ],
+                  const SizedBox(height: 4),
+                  _InfoRow(
+                      icon: Icons.cloud_upload,
+                      iconColor: sentAt != null ? Colors.blue : Colors.grey,
+                      label: s.labelSentAt,
+                      value: _formatTime(sentAt)),
                   const SizedBox(height: 4),
                   if (postError != null)
                     _InfoRow(
                         icon: Icons.cloud_off,
                         iconColor: Colors.orange,
-                        label: '傳送狀態',
-                        value: postError!)
-                  else
-                    const _InfoRow(
-                        icon: Icons.cloud_done,
-                        iconColor: Colors.green,
-                        label: '傳送狀態',
-                        value: '成功'),
+                        label: s.labelSendStatus,
+                        value: postError!),
                 ] else
-                  const Text('尚無定位資料，請按下方按鈕開始追蹤',
-                      style: TextStyle(color: Colors.grey)),
+                  Text(s.statusNoDataHint,
+                      style: const TextStyle(color: Colors.grey)),
               ],
             ),
           ),
@@ -415,6 +610,7 @@ class _TrackingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppL10n.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -443,7 +639,7 @@ class _TrackingButton extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              isTracking ? '停止追蹤' : '開始追蹤',
+              isTracking ? s.btnStop : s.btnStart,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -458,7 +654,43 @@ class _TrackingButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 共用 Widget
+// 時間格式化
+// ---------------------------------------------------------------------------
+
+/// 將 UTC ISO-8601 字串轉為本地時區的 "MM/DD HH:mm (原始時間)" 格式。
+String _formatTime(String? isoUtc) {
+  if (isoUtc == null || isoUtc.isEmpty) return '—';
+  try {
+    final dt = DateTime.parse(isoUtc).toLocal();
+    final display =
+        '${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '$display ($isoUtc)';
+  } catch (_) {
+    return isoUtc;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 自檢警告資料模型
+// ---------------------------------------------------------------------------
+
+class _CheckWarning {
+  final IconData icon;
+  final Color color;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _CheckWarning({
+    required this.icon,
+    required this.color,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+}
+
 // ---------------------------------------------------------------------------
 
 class _InfoRow extends StatelessWidget {
@@ -481,7 +713,9 @@ class _InfoRow extends StatelessWidget {
       children: [
         Icon(icon, size: 15, color: iconColor ?? Colors.blue),
         const SizedBox(width: 6),
-        Text('$label：', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+        Text('$label：',
+            style: const TextStyle(
+                fontWeight: FontWeight.w500, fontSize: 13)),
         Expanded(
             child: Text(value,
                 overflow: TextOverflow.ellipsis,

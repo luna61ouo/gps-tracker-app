@@ -14,6 +14,7 @@ Future<Map<String, String>> encryptGpsPayload({
   required double lng,
   required String timestamp,
   required String serverPubKeyB64,
+  Map<String, dynamic> extraFields = const {},
 }) async {
   // Decode server static public key
   final serverPubKeyBytes = base64.decode(serverPubKeyB64);
@@ -46,7 +47,13 @@ Future<Map<String, String>> encryptGpsPayload({
   final aesGcm = AesGcm.with256bits();
   final nonce = aesGcm.newNonce();
   final plaintext = utf8.encode(
-    jsonEncode({'lat': lat, 'lng': lng, 'timestamp': timestamp}),
+    jsonEncode(<String, dynamic>{
+      'v': 1,
+      'lat': lat,
+      'lng': lng,
+      'timestamp': timestamp,
+      ...extraFields,
+    }),
   );
 
   final secretBox = await aesGcm.encrypt(

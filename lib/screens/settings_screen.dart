@@ -1,8 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
+import '../l10n/app_strings.dart';
+import '../l10n/localizations.dart';
 import '../services/background_service.dart';
 import '../main.dart' show kRelayUrlListKey;
 
@@ -20,7 +26,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _pubKeyController = TextEditingController();
   bool _tokenObscured = true;
   bool _pubKeyObscured = true;
+
+  String _confirmMode = kDefaultConfirmMode;
   int _bgIntervalSeconds = kDefaultBgIntervalSeconds;
+  int _historyGranularitySeconds = kDefaultHistoryGranularitySeconds;
+  int _historyRetentionHours = kDefaultHistoryRetentionHours;
+  bool _batteryOptDisabled = false;
+  String _language = 'auto';
 
   @override
   void initState() {
@@ -43,7 +55,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _tokenController.text = prefs.getString(kTokenKey) ?? '';
       _pubKeyController.text = prefs.getString(kServerPubKeyKey) ?? '';
       _bgIntervalSeconds = prefs.getInt(kBgIntervalKey) ?? kDefaultBgIntervalSeconds;
+      _confirmMode = prefs.getString(kConfirmModeKey) ?? kDefaultConfirmMode;
+      _historyGranularitySeconds =
+          prefs.getInt(kHistoryGranularityKey) ?? kDefaultHistoryGranularitySeconds;
+      _historyRetentionHours =
+          prefs.getInt(kHistoryRetentionKey) ?? kDefaultHistoryRetentionHours;
+      _language = prefs.getString(kLanguageKey) ?? 'auto';
     });
+    if (Platform.isAndroid) {
+      final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+      if (mounted) setState(() => _batteryOptDisabled = batteryStatus.isGranted);
+    }
+  }
+
+  Future<void> _requestBatteryOptExemption() async {
+    if (!Platform.isAndroid) return;
+    await Permission.ignoreBatteryOptimizations.request();
+    final status = await Permission.ignoreBatteryOptimizations.status;
+    if (mounted) setState(() => _batteryOptDisabled = status.isGranted);
   }
 
   Future<void> _saveSettings() async {
@@ -53,31 +82,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString(kTokenKey, _tokenController.text.trim());
     await prefs.setString(kServerPubKeyKey, _pubKeyController.text.trim());
     await prefs.setInt(kBgIntervalKey, _bgIntervalSeconds);
+    await prefs.setString(kConfirmModeKey, _confirmMode);
+    await prefs.setInt(kHistoryGranularityKey, _historyGranularitySeconds);
+    await prefs.setInt(kHistoryRetentionKey, _historyRetentionHours);
+
+    final isRunning = await FlutterBackgroundService().isRunning();
+    if (isRunning) {
+      FlutterBackgroundService().invoke('updateSettings', {
+        'confirmMode': _confirmMode,
+        'historyGranularity': _historyGranularitySeconds,
+        'historyRetention': _historyRetentionHours,
+        'bgInterval': _bgIntervalSeconds,
+      });
+    }
   }
 
-  Future<void> _showAddRelayDialog() async {
+  Future<void> _showAddRelayDialog(AppStrings s) async {
     final controller = TextEditingController();
     final url = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('新增 Relay 伺服器'),
+        title: Text(s.relayAddTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'wss://example.com/relay',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: s.relayAddHint,
+            border: const OutlineInputBorder(),
           ),
           keyboardType: TextInputType.url,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(s.btnCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('新增'),
+            child: Text(s.btnAdd),
           ),
         ],
       ),
@@ -91,21 +133,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _deleteRelayUrl(String url) async {
+  Future<void> _deleteRelayUrl(String url, AppStrings s) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('刪除伺服器'),
-        content: Text('確定要刪除？\n$url'),
+        title: Text(s.relayDeleteTitle),
+        content: Text(s.relayDeleteConfirm(url)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(s.btnCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('刪除'),
+            child: Text(s.btnDelete),
           ),
         ],
       ),
@@ -128,18 +170,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  String _confirmModeHelperText(AppStrings s) {
+    switch (_confirmMode) {
+      case 'ask':
+        return s.confirmHintAsk;
+      case 'deny':
+        return s.confirmHintDeny;
+      default:
+        return s.confirmHintAuto;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final s = AppL10n.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('設定'),
+        title: Text(s.settingsTitle),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Relay 伺服器
-          _SectionHeader(title: 'Relay 伺服器', icon: Icons.cloud),
+          // ── 中繼資料轉送伺服器 ───────────────────────────────────────────────
+          Row(
+            children: [
+              _SectionHeader(title: s.sectionRelay, icon: Icons.cloud),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Row(
+                      children: [
+                        const Icon(Icons.cloud, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Text(s.relayInfoTitle),
+                      ],
+                    ),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(s.relayInfoWhatTitle,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(s.relayInfoWhatBody),
+                          const SizedBox(height: 12),
+                          Text(s.relayInfoSecurityTitle,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(s.relayInfoSecurityBody),
+                          const SizedBox(height: 12),
+                          Text(s.relayInfoSelfHostTitle,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(s.relayInfoSelfHostBody),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(s.btnGotIt),
+                      ),
+                    ],
+                  ),
+                ),
+                child: const Icon(Icons.help_outline,
+                    size: 16, color: Colors.grey),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -154,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: DropdownButton<String>(
                       value: _selectedRelayUrl,
                       isExpanded: true,
-                      hint: const Text('尚未設定，請點 + 新增'),
+                      hint: Text(s.relayDropdownHint),
                       items: _relayUrls.map((url) {
                         final isDefault = url == kDefaultRelayUrl;
                         return DropdownMenuItem<String>(
@@ -163,13 +269,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  isDefault ? '官方路由' : url,
+                                  isDefault ? s.relayOfficialLabel : url,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (!isDefault)
                                 GestureDetector(
-                                  onTap: () => _deleteRelayUrl(url),
+                                  onTap: () => _deleteRelayUrl(url, s),
                                   child: const Icon(Icons.close,
                                       size: 16, color: Colors.grey),
                                 ),
@@ -187,32 +293,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(width: 8),
               IconButton.filled(
-                onPressed: _showAddRelayDialog,
+                onPressed: () => _showAddRelayDialog(s),
                 icon: const Icon(Icons.add),
-                tooltip: '新增伺服器',
+                tooltip: s.relayAddTitle,
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // 更新間隔
-          _SectionHeader(title: '更新間隔', icon: Icons.timer),
+          // ── 提取確認方式 ───────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionConfirmMode, icon: Icons.verified_user),
           const SizedBox(height: 8),
           InputDecorator(
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              helperText: '開啟 App 時固定每 5 秒更新',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              helperText: _confirmModeHelperText(s),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _confirmMode,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(value: 'auto', child: Text(s.confirmModeAuto)),
+                  DropdownMenuItem(value: 'ask', child: Text(s.confirmModeAsk)),
+                  DropdownMenuItem(value: 'deny', child: Text(s.confirmModeDeny)),
+                ],
+                onChanged: (val) {
+                  if (val == null) return;
+                  setState(() => _confirmMode = val);
+                  _saveSettings();
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 更新間隔 ───────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionInterval, icon: Icons.timer),
+          const SizedBox(height: 8),
+          InputDecorator(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              helperText: s.intervalFgNote,
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
                 value: _bgIntervalSeconds,
                 isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 30, child: Text('30 秒')),
-                  DropdownMenuItem(value: 60, child: Text('1 分鐘（預設）')),
-                  DropdownMenuItem(value: 120, child: Text('2 分鐘')),
-                  DropdownMenuItem(value: 300, child: Text('5 分鐘')),
+                items: [
+                  DropdownMenuItem(value: 30, child: Text(s.intervalSec(30))),
+                  DropdownMenuItem(value: 60, child: Text(s.withDefault(s.intervalMin(1)))),
+                  DropdownMenuItem(value: 120, child: Text(s.intervalMin(2))),
+                  DropdownMenuItem(value: 300, child: Text(s.intervalMin(5))),
+                  DropdownMenuItem(value: 600, child: Text(s.intervalMin(10))),
+                  DropdownMenuItem(value: 900, child: Text(s.intervalMin(15))),
+                  DropdownMenuItem(value: 1800, child: Text(s.intervalMin(30))),
                 ],
                 onChanged: (val) {
                   if (val == null) return;
@@ -224,15 +363,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // 配對設定
-          _SectionHeader(title: '配對設定', icon: Icons.link),
+          // ── 歷史追蹤 ───────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionHistory, icon: Icons.history),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            child: Text(
+              s.historyNote,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ),
+          InputDecorator(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              labelText: s.historyGranularityLabel,
+              helperText: s.historyGranularityHint,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _historyGranularitySeconds,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(value: 0, child: Text(s.historyNoSave)),
+                  DropdownMenuItem(value: 60, child: Text(s.intervalMin(1))),
+                  DropdownMenuItem(value: 300, child: Text(s.intervalMin(5))),
+                  DropdownMenuItem(value: 600, child: Text(s.withDefault(s.intervalMin(10)))),
+                  DropdownMenuItem(value: 900, child: Text(s.intervalMin(15))),
+                  DropdownMenuItem(value: 1800, child: Text(s.intervalMin(30))),
+                  DropdownMenuItem(value: 3600, child: Text(s.intervalHour(1))),
+                  DropdownMenuItem(value: 7200, child: Text(s.intervalHour(2))),
+                  DropdownMenuItem(value: 10800, child: Text(s.intervalHour(3))),
+                  DropdownMenuItem(value: 21600, child: Text(s.intervalHour(6))),
+                  DropdownMenuItem(value: 28800, child: Text(s.intervalHour(8))),
+                  DropdownMenuItem(value: 43200, child: Text(s.intervalHour(12))),
+                ],
+                onChanged: (val) {
+                  if (val == null) return;
+                  setState(() => _historyGranularitySeconds = val);
+                  _saveSettings();
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          InputDecorator(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              labelText: s.historyRetentionLabel,
+              helperText: s.historyRetentionHint,
+              enabled: _historyGranularitySeconds > 0,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _historyRetentionHours,
+                isExpanded: true,
+                disabledHint: const Text('—'),
+                onChanged: _historyGranularitySeconds > 0
+                    ? (val) {
+                        if (val == null) return;
+                        setState(() => _historyRetentionHours = val);
+                        _saveSettings();
+                      }
+                    : null,
+                items: [
+                  DropdownMenuItem(value: 6, child: Text(s.retentionHour(6))),
+                  DropdownMenuItem(value: 12, child: Text(s.retentionHour(12))),
+                  DropdownMenuItem(value: 24, child: Text(s.retentionDay(1))),
+                  DropdownMenuItem(value: 72, child: Text(s.retentionDay(3))),
+                  DropdownMenuItem(value: 168, child: Text(s.withDefault(s.retentionWeek(1)))),
+                  DropdownMenuItem(value: 336, child: Text(s.retentionWeek(2))),
+                  DropdownMenuItem(value: 720, child: Text(s.retentionMonth(1))),
+                  DropdownMenuItem(value: -1, child: Text(s.retentionUnlimited)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 配對設定 ───────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionPairing, icon: Icons.link),
           const SizedBox(height: 8),
           TextField(
             controller: _tokenController,
             obscureText: _tokenObscured,
             decoration: InputDecoration(
-              labelText: 'Token（配對碼）',
-              hintText: '由 OpenClaw 提供',
+              labelText: s.labelToken,
+              hintText: s.labelTokenHint,
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.vpn_key),
               suffixIcon: IconButton(
@@ -249,8 +469,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: _pubKeyController,
             obscureText: _pubKeyObscured,
             decoration: InputDecoration(
-              labelText: '伺服器公鑰',
-              hintText: '由 OpenClaw 提供（Base64）',
+              labelText: s.labelPubKey,
+              hintText: s.labelPubKeyHint,
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: IconButton(
@@ -264,8 +484,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
-          // 教學
-          _SectionHeader(title: '說明與教學', icon: Icons.school),
+          // ── 進階設定（Android only）────────────────────────────────────────
+          if (Platform.isAndroid) ...[
+            _SectionHeader(title: s.sectionAdvanced, icon: Icons.tune),
+            const SizedBox(height: 8),
+            ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.shade300),
+              ),
+              leading: Icon(
+                Icons.battery_charging_full,
+                color: _batteryOptDisabled ? Colors.green : Colors.grey,
+              ),
+              title: Text(s.batteryModeTitle),
+              subtitle: Text(
+                _batteryOptDisabled
+                    ? s.batteryModeOnDesc
+                    : s.batteryModeOffDesc,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _batteryOptDisabled ? Colors.green : Colors.grey,
+                ),
+              ),
+              trailing: _batteryOptDisabled
+                  ? const Icon(Icons.check_circle, color: Colors.green)
+                  : const Icon(Icons.chevron_right),
+              onTap: _batteryOptDisabled ? null : _requestBatteryOptExemption,
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // ── 語言 ───────────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionLanguage, icon: Icons.language),
+          const SizedBox(height: 8),
+          InputDecorator(
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _language,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(value: 'auto', child: Text(s.langAuto)),
+                  DropdownMenuItem(value: 'zh', child: Text(s.langZh)),
+                  DropdownMenuItem(value: 'en', child: Text(s.langEn)),
+                ],
+                onChanged: (val) async {
+                  if (val == null) return;
+                  setState(() => _language = val);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString(kLanguageKey, val);
+                  appLocale.value = resolveStrings(val);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 說明與教學 ─────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionGuide, icon: Icons.school),
           const SizedBox(height: 8),
           ListTile(
             shape: RoundedRectangleBorder(
@@ -273,12 +554,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               side: BorderSide(color: Colors.grey.shade300),
             ),
             leading: const Icon(Icons.menu_book),
-            title: const Text('安裝與設定教學'),
-            subtitle: const Text('如何搭配 OpenClaw 使用'),
+            title: Text(s.guideTutorialTitle),
+            subtitle: Text(s.guideTutorialSubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
-              final uri = Uri.parse(
-                  'https://github.com/myasaliu/gps-bridge#readme');
+              final uri =
+                  Uri.parse('https://github.com/myasaliu/gps-bridge#readme');
               if (await canLaunchUrl(uri)) launchUrl(uri);
             },
           ),
@@ -289,8 +570,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               side: BorderSide(color: Colors.grey.shade300),
             ),
             leading: const Icon(Icons.code),
-            title: const Text('gps-bridge 原始碼'),
-            subtitle: const Text('github.com/myasaliu/gps-bridge'),
+            title: Text(s.guideBridgeTitle),
+            subtitle: Text(s.guideBridgeSubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
               final uri =
@@ -305,8 +586,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               side: BorderSide(color: Colors.grey.shade300),
             ),
             leading: const Icon(Icons.router),
-            title: const Text('gps-relay 原始碼'),
-            subtitle: const Text('github.com/myasaliu/gps-relay'),
+            title: Text(s.guideRelayTitle),
+            subtitle: Text(s.guideRelaySubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
               final uri =
