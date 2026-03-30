@@ -218,12 +218,22 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     }
 
     final relayUrl = prefs.getString(kRelayUrlKey) ?? '';
-    final token = prefs.getString(kTokenKey) ?? '';
-    if (relayUrl.isEmpty || token.isEmpty) {
+    if (relayUrl.isEmpty) {
       warnings.add(_CheckWarning(
         icon: Icons.cloud_off,
         color: Colors.orange,
         message: s.warnNoRelay,
+        actionLabel: s.btnGoSettings,
+        onAction: _goToSettings,
+      ));
+    }
+
+    final token = prefs.getString(kTokenKey) ?? '';
+    if (token.isEmpty) {
+      warnings.add(_CheckWarning(
+        icon: Icons.key_off,
+        color: Colors.orange,
+        message: s.warnNoToken,
         actionLabel: s.btnGoSettings,
         onAction: _goToSettings,
       ));

@@ -61,7 +61,8 @@ class AppStringsEn extends AppStrings {
   @override String get warnNoLocationPerm =>
       'Missing "Always Allow" location permission — background tracking may fail';
   @override String get warnNoPubKey => 'Server public key not configured';
-  @override String get warnNoRelay => 'Relay connection not configured (URL or Token missing)';
+  @override String get warnNoRelay => 'Relay server not configured';
+  @override String get warnNoToken => 'Pairing token not configured';
   @override String get warnNeedBgPerm =>
       'Background location permission required\nGo to Settings and enable "Always Allow" location';
 

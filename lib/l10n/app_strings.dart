@@ -58,6 +58,7 @@ abstract class AppStrings {
   String get warnNoLocationPerm;
   String get warnNoPubKey;
   String get warnNoRelay;
+  String get warnNoToken;
   String get warnNeedBgPerm;
 
   // ── Settings page ─────────────────────────────────────────────────────────
