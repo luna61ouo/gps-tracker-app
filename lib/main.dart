@@ -187,10 +187,19 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     final List<_CheckWarning> warnings = [];
 
     final locAlways = await Permission.locationAlways.status;
-    if (!locAlways.isGranted) {
+    final locWhenInUse = await Permission.locationWhenInUse.status;
+    if (!locAlways.isGranted && !locWhenInUse.isGranted) {
       warnings.add(_CheckWarning(
         icon: Icons.location_off,
         color: Colors.red,
+        message: s.warnNoLocationPerm,
+        actionLabel: s.btnGoSettings,
+        onAction: openAppSettings,
+      ));
+    } else if (!locAlways.isGranted) {
+      warnings.add(_CheckWarning(
+        icon: Icons.location_on,
+        color: Colors.orange,
         message: s.warnNoLocationPerm,
         actionLabel: s.btnGoSettings,
         onAction: openAppSettings,
