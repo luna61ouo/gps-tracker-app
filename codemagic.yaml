@@ -15,7 +15,8 @@ workflows:
     scripts:
       - name: Generate config.dart
         script: |
-          cp lib/config.dart.example lib/config.dart
+          sed -e "s|your-relay.example.com|$RELAY_HOST|g" \
+              lib/config.dart.example > lib/config.dart
 
       - name: Set up code signing settings on Xcode project
         script: |
