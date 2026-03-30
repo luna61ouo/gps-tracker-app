@@ -36,6 +36,7 @@ class AppStringsEn extends AppStrings {
   @override String get btnCancel => 'Cancel';
   @override String get btnAdd => 'Add';
   @override String get btnDelete => 'Delete';
+  @override String get btnCopy => 'Copy';
   @override String get btnGoSettings => 'Go to Settings';
 
   // ── Status tile ──────────────────────────────────────────────────────────
@@ -130,6 +131,21 @@ class AppStringsEn extends AppStrings {
   @override String retentionWeek(int n) => n == 1 ? '1 week' : '$n weeks';
   @override String retentionMonth(int n) => n == 1 ? '1 month' : '$n months';
   @override String get retentionUnlimited => 'Unlimited';
+
+  // Install Bridge section
+  @override String get sectionInstallBridge => 'Install Bridge';
+  @override String get installBridgeTitle => 'Copy instructions for OpenClaw';
+  @override String get installBridgeSubtitle => 'Let OpenClaw install GPS Bridge automatically';
+  @override String get installBridgeDialogTitle => 'Install GPS Bridge';
+  @override String get installBridgeDialogBody =>
+      'Copy the text below and paste it to OpenClaw:\n\n'
+      '---\n'
+      'Please install GPS Bridge to receive encrypted GPS coordinates from my phone.\n\n'
+      'pip install gps-bridge\n\n'
+      'After installation, help me set up GPS tracking (generate keypair and pairing token).\n\n'
+      'Project info: https://github.com/luna61ouo/gps-bridge\n'
+      '---';
+  @override String get installBridgeCopied => 'Copied! Paste it to OpenClaw.';
 
   // Pairing section
   @override String get sectionPairing => 'Pairing';

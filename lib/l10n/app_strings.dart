@@ -35,6 +35,7 @@ abstract class AppStrings {
   String get btnCancel;
   String get btnAdd;
   String get btnDelete;
+  String get btnCopy;
   String get btnGoSettings;
 
   // ── Status tile ──────────────────────────────────────────────────────────
@@ -113,6 +114,14 @@ abstract class AppStrings {
   String retentionWeek(int n);
   String retentionMonth(int n);
   String get retentionUnlimited;
+
+  // Install Bridge section
+  String get sectionInstallBridge;
+  String get installBridgeTitle;
+  String get installBridgeSubtitle;
+  String get installBridgeDialogTitle;
+  String get installBridgeDialogBody;
+  String get installBridgeCopied;
 
   // Pairing section
   String get sectionPairing;

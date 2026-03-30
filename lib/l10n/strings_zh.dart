@@ -36,6 +36,7 @@ class AppStringsZh extends AppStrings {
   @override String get btnCancel => '取消';
   @override String get btnAdd => '新增';
   @override String get btnDelete => '刪除';
+  @override String get btnCopy => '複製';
   @override String get btnGoSettings => '前往設定';
 
   // ── Status tile ──────────────────────────────────────────────────────────
@@ -127,6 +128,21 @@ class AppStringsZh extends AppStrings {
   @override String retentionWeek(int n) => '$n 週';
   @override String retentionMonth(int n) => '$n 個月';
   @override String get retentionUnlimited => '無上限';
+
+  // Install Bridge section
+  @override String get sectionInstallBridge => '安裝 Bridge';
+  @override String get installBridgeTitle => '將指令貼給 OpenClaw';
+  @override String get installBridgeSubtitle => '讓 OpenClaw 自動安裝 GPS Bridge';
+  @override String get installBridgeDialogTitle => '安裝 GPS Bridge';
+  @override String get installBridgeDialogBody =>
+      '將以下文字複製後貼給 OpenClaw：\n\n'
+      '---\n'
+      '請幫我安裝 GPS Bridge，用來接收手機的加密 GPS 座標。\n\n'
+      'pip install gps-bridge\n\n'
+      '安裝完成後，請幫我設定 GPS 追蹤（產生金鑰和配對碼）。\n\n'
+      '專案資訊：https://github.com/luna61ouo/gps-bridge\n'
+      '---';
+  @override String get installBridgeCopied => '已複製到剪貼簿，貼給 OpenClaw 吧！';
 
   // Pairing section
   @override String get sectionPairing => '配對設定';

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -251,6 +252,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _tokenController.dispose();
     _pubKeyController.dispose();
     super.dispose();
+  }
+
+  void _showInstallBridgeDialog(BuildContext context, AppStrings s) {
+    final copyText =
+        'Please install GPS Bridge to receive encrypted GPS coordinates from my phone.\n\n'
+        'pip install gps-bridge\n\n'
+        'After installation, help me set up GPS tracking (generate keypair and pairing token).\n\n'
+        'Project info: https://github.com/luna61ouo/gps-bridge';
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(s.installBridgeDialogTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(s.installBridgeDialogBody),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(s.btnCancel),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.content_copy, size: 18),
+            label: Text(s.btnCopy),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: copyText));
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(s.installBridgeCopied),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPairingHelp(BuildContext context, AppStrings s) {
@@ -541,6 +586,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   DropdownMenuItem(value: -1, child: Text(s.retentionUnlimited)),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 安裝 Bridge ──────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionInstallBridge, icon: Icons.computer),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.content_copy, color: Colors.blue),
+              title: Text(s.installBridgeTitle),
+              subtitle: Text(s.installBridgeSubtitle),
+              onTap: () => _showInstallBridgeDialog(context, s),
             ),
           ),
           const SizedBox(height: 24),
