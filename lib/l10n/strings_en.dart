@@ -59,7 +59,9 @@ class AppStringsEn extends AppStrings {
 
   // ── Self-check warnings ───────────────────────────────────────────────────
   @override String get warnNoLocationPerm =>
-      'Missing "Always Allow" location permission — background tracking may fail';
+      'Location permission not granted';
+  @override String get warnLocationWhileInUse =>
+      'Currently set to "While In Use" — change to "Always Allow" for reliable background tracking';
   @override String get warnNoPubKey => 'Server public key not configured';
   @override String get warnNoRelay => 'Relay server not configured';
   @override String get warnNoToken => 'Pairing token not configured';

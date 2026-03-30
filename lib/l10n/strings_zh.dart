@@ -58,7 +58,9 @@ class AppStringsZh extends AppStrings {
 
   // ── Self-check warnings ───────────────────────────────────────────────────
   @override String get warnNoLocationPerm =>
-      '缺少「永遠允許」定位權限，背景追蹤可能失效';
+      '尚未允許定位權限';
+  @override String get warnLocationWhileInUse =>
+      '目前為「使用期間」定位，建議改為「永遠允許」以確保背景追蹤正常';
   @override String get warnNoPubKey => '尚未設定伺服器公鑰';
   @override String get warnNoRelay => '尚未設定 Relay 伺服器';
   @override String get warnNoToken => '尚未設定配對碼（Token）';

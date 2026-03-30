@@ -186,9 +186,10 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     final prefs = await SharedPreferences.getInstance();
     final List<_CheckWarning> warnings = [];
 
-    final locAlways = await Permission.locationAlways.status;
-    final locWhenInUse = await Permission.locationWhenInUse.status;
-    if (!locAlways.isGranted && !locWhenInUse.isGranted) {
+    final locPerm = await Geolocator.checkPermission();
+    if (locPerm == LocationPermission.denied ||
+        locPerm == LocationPermission.deniedForever ||
+        locPerm == LocationPermission.unableToDetermine) {
       warnings.add(_CheckWarning(
         icon: Icons.location_off,
         color: Colors.red,
@@ -196,15 +197,16 @@ class _TrackingHomePageState extends State<TrackingHomePage>
         actionLabel: s.btnGoSettings,
         onAction: openAppSettings,
       ));
-    } else if (!locAlways.isGranted) {
+    } else if (locPerm == LocationPermission.whileInUse) {
       warnings.add(_CheckWarning(
         icon: Icons.location_on,
         color: Colors.orange,
-        message: s.warnNoLocationPerm,
+        message: s.warnLocationWhileInUse,
         actionLabel: s.btnGoSettings,
         onAction: openAppSettings,
       ));
     }
+    // locPerm == LocationPermission.always → no warning
 
     final pubKey = prefs.getString(kServerPubKeyKey) ?? '';
     if (pubKey.isEmpty) {

@@ -56,6 +56,7 @@ abstract class AppStrings {
 
   // ── Self-check warnings ───────────────────────────────────────────────────
   String get warnNoLocationPerm;
+  String get warnLocationWhileInUse;
   String get warnNoPubKey;
   String get warnNoRelay;
   String get warnNoToken;
