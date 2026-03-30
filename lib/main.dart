@@ -87,6 +87,7 @@ class _AppEntry extends StatefulWidget {
 
 class _AppEntryState extends State<_AppEntry> {
   bool? _onboardingComplete;
+  bool _showGuide = false;
 
   @override
   void initState() {
@@ -107,10 +108,16 @@ class _AppEntryState extends State<_AppEntry> {
     }
     if (_onboardingComplete == false) {
       return OnboardingScreen(
-        onComplete: () => setState(() => _onboardingComplete = true),
+        onComplete: () => setState(() {
+          _onboardingComplete = true;
+          _showGuide = true;
+        }),
       );
     }
-    return const TrackingHomePage();
+    return TrackingHomePage(
+      showSetupGuide: _showGuide,
+      onGuideComplete: () => setState(() => _showGuide = false),
+    );
   }
 }
 
@@ -119,7 +126,14 @@ class _AppEntryState extends State<_AppEntry> {
 // ---------------------------------------------------------------------------
 
 class TrackingHomePage extends StatefulWidget {
-  const TrackingHomePage({super.key});
+  final bool showSetupGuide;
+  final VoidCallback? onGuideComplete;
+
+  const TrackingHomePage({
+    super.key,
+    this.showSetupGuide = false,
+    this.onGuideComplete,
+  });
 
   @override
   State<TrackingHomePage> createState() => _TrackingHomePageState();
@@ -127,6 +141,7 @@ class TrackingHomePage extends StatefulWidget {
 
 class _TrackingHomePageState extends State<TrackingHomePage>
     with WidgetsBindingObserver {
+  bool _showingGuide = false;
   bool _isTracking = false;
   double? _lastLat;
   double? _lastLng;
@@ -141,6 +156,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   @override
   void initState() {
     super.initState();
+    _showingGuide = widget.showSetupGuide;
     WidgetsBinding.instance.addObserver(this);
     _checkServiceStatus();
     _listenToLocationUpdates();
@@ -326,10 +342,12 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     });
   }
 
-  Future<void> _goToSettings() async {
+  Future<void> _goToSettings({bool showInstallGuide = false}) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(showInstallGuide: showInstallGuide),
+      ),
     );
     _runSelfCheck();
   }
@@ -472,32 +490,45 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     super.dispose();
   }
 
+  void _handleGuideSettingsTap() {
+    setState(() => _showingGuide = false);
+    widget.onGuideComplete?.call();
+    _goToSettings(showInstallGuide: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppL10n.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.satellite_alt, size: 20),
-            const SizedBox(width: 8),
-            Text(s.appTitle),
-          ],
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: s.tooltipSettings,
-            onPressed: _goToSettings,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                const Icon(Icons.satellite_alt, size: 20),
+                const SizedBox(width: 8),
+                Text(s.appTitle),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.settings,
+                  color: _showingGuide ? Colors.yellow : null,
+                ),
+                tooltip: s.tooltipSettings,
+                onPressed: _showingGuide
+                    ? _handleGuideSettingsTap
+                    : _goToSettings,
+              ),
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: s.tooltipHelp,
+                onPressed: _showingGuide ? null : _showHelpDialog,
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            tooltip: s.tooltipHelp,
-            onPressed: _showHelpDialog,
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           // 追蹤按鈕永遠置中於整個 body
@@ -597,6 +628,51 @@ class _TrackingHomePageState extends State<TrackingHomePage>
           ),
         ],
       ),
+    ),
+    // Setup guide overlay
+    if (_showingGuide)
+      GestureDetector(
+        onTap: _handleGuideSettingsTap,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.7),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Arrow pointing to settings gear
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4, right: 48),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.arrow_upward, color: Colors.yellow, size: 32),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.yellow,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            '點這裡開始設定\nTap here to start setup',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ],
     );
   }
 }

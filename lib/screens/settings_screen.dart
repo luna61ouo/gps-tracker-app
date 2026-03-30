@@ -15,7 +15,9 @@ import '../services/background_service.dart';
 import '../main.dart' show kRelayUrlListKey;
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final bool showInstallGuide;
+
+  const SettingsScreen({super.key, this.showInstallGuide = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -41,6 +43,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadSettings();
+    if (widget.showInstallGuide) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final s = AppL10n.of(context);
+          _showInstallBridgeDialog(context, s);
+        }
+      });
+    }
   }
 
   Future<void> _loadSettings() async {
