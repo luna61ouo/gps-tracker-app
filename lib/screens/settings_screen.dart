@@ -407,8 +407,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _selectedRelayUrl,
                       isExpanded: true,
                       hint: Text(s.relayDropdownHint),
-                      items: _relayUrls.map((url) {
-                        final isDefault = url == kDefaultRelayUrl;
+                      items: _relayUrls.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final url = entry.value;
+                        final isDefault = idx == 0; // first entry is always the default
                         return DropdownMenuItem<String>(
                           value: url,
                           child: Row(
