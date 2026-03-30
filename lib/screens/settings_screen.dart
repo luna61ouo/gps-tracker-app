@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _historyGranularitySeconds = kDefaultHistoryGranularitySeconds;
   int _historyRetentionHours = kDefaultHistoryRetentionHours;
   bool _batteryOptDisabled = false;
+  int? _timezoneOffsetMinutes; // null = auto
   String _language = 'auto';
 
   @override
@@ -61,6 +62,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _historyRetentionHours =
           prefs.getInt(kHistoryRetentionKey) ?? kDefaultHistoryRetentionHours;
       _language = prefs.getString(kLanguageKey) ?? 'auto';
+      final tzStored = prefs.getInt(kTimezoneOffsetKey) ?? kTimezoneAuto;
+      _timezoneOffsetMinutes = tzStored == kTimezoneAuto ? null : tzStored;
     });
     if (Platform.isAndroid) {
       final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
@@ -73,6 +76,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await Permission.ignoreBatteryOptimizations.request();
     final status = await Permission.ignoreBatteryOptimizations.status;
     if (mounted) setState(() => _batteryOptDisabled = status.isGranted);
+  }
+
+  List<DropdownMenuItem<int?>> _buildTimezoneItems(AppStrings s) {
+    const offsets = <int?>[
+      null,
+      -720, -660, -600, -540, -480, -420, -360, -300, -240, -180, -120, -60,
+      0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420,
+      480, 540, 570, 600, 630, 660, 720, 780, 840,
+    ];
+    return offsets.map((m) {
+      final label = m == null ? s.timezoneAuto : _tzLabel(m);
+      return DropdownMenuItem<int?>(value: m, child: Text(label));
+    }).toList();
+  }
+
+  static const _kTzRegions = <int, String>{
+    -720: 'Baker Island',
+    -660: 'Samoa, Niue',
+    -600: 'Hawaii',
+    -540: 'Alaska',
+    -480: 'Los Angeles, Vancouver',
+    -420: 'Denver, Phoenix',
+    -360: 'Chicago, Mexico City',
+    -300: 'New York, Toronto',
+    -240: 'Halifax, Caracas',
+    -180: 'Buenos Aires, São Paulo',
+    -120: 'South Georgia',
+    -60: 'Azores',
+    0: 'London, Dublin, Lisbon',
+    60: 'Paris, Berlin, Rome',
+    120: 'Cairo, Athens, Johannesburg',
+    180: 'Moscow, Riyadh, Istanbul',
+    210: 'Tehran',
+    240: 'Dubai, Baku',
+    270: 'Kabul',
+    300: 'Karachi, Tashkent',
+    330: 'Mumbai, New Delhi',
+    345: 'Kathmandu',
+    360: 'Dhaka, Almaty',
+    390: 'Yangon',
+    420: 'Bangkok, Jakarta, Hanoi',
+    480: 'Taipei, Beijing, Singapore, HK',
+    540: 'Tokyo, Seoul',
+    570: 'Adelaide',
+    600: 'Sydney, Melbourne',
+    630: 'Lord Howe Island',
+    660: 'Solomon Islands',
+    720: 'Auckland, Fiji',
+    780: 'Tonga',
+    840: 'Kiribati',
+  };
+
+  String _tzLabel(int minutes) {
+    final abs = minutes.abs();
+    final h = abs ~/ 60;
+    final m = abs % 60;
+    final sign = minutes >= 0 ? '+' : '-';
+    final utc = m == 0 ? 'UTC$sign$h' : 'UTC$sign$h:${m.toString().padLeft(2, '0')}';
+    final region = _kTzRegions[minutes];
+    return region != null ? '$utc  –  $region' : utc;
   }
 
   Future<void> _saveSettings() async {
@@ -515,6 +578,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
           ],
 
+          // ── 顯示時區 ────────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionTimezone, icon: Icons.schedule),
+          const SizedBox(height: 8),
+          InputDecorator(
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int?>(
+                value: _timezoneOffsetMinutes,
+                isExpanded: true,
+                items: _buildTimezoneItems(s),
+                onChanged: (val) async {
+                  setState(() => _timezoneOffsetMinutes = val);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt(kTimezoneOffsetKey, val ?? kTimezoneAuto);
+                  appTimezone.value = val;
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // ── 語言 ───────────────────────────────────────────────────────────
           _SectionHeader(title: s.sectionLanguage, icon: Icons.language),
           const SizedBox(height: 8),
@@ -558,8 +645,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(s.guideTutorialSubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
-              final uri =
-                  Uri.parse('https://github.com/myasaliu/gps-bridge#readme');
+              final uri = Uri.parse('$kGithubBridgeUrl#readme');
               if (await canLaunchUrl(uri)) launchUrl(uri);
             },
           ),
@@ -574,8 +660,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(s.guideBridgeSubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
-              final uri =
-                  Uri.parse('https://github.com/myasaliu/gps-bridge');
+              final uri = Uri.parse(kGithubBridgeUrl);
               if (await canLaunchUrl(uri)) launchUrl(uri);
             },
           ),
@@ -590,8 +675,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(s.guideRelaySubtitle),
             trailing: const Icon(Icons.open_in_new, size: 16),
             onTap: () async {
-              final uri =
-                  Uri.parse('https://github.com/myasaliu/gps-relay');
+              final uri = Uri.parse(kGithubRelayUrl);
               if (await canLaunchUrl(uri)) launchUrl(uri);
             },
           ),

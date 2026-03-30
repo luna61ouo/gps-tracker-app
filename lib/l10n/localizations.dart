@@ -22,6 +22,11 @@ AppStrings resolveStrings(String lang) {
 final ValueNotifier<AppStrings> appLocale =
     ValueNotifier(resolveStrings('auto'));
 
+/// Global timezone notifier.
+/// null = use device system timezone.
+/// int  = minutes offset from UTC (e.g. 480 = UTC+8).
+final ValueNotifier<int?> appTimezone = ValueNotifier<int?>(null);
+
 /// InheritedWidget that provides [AppStrings] to the widget tree.
 /// Wrap the root widget with this and call [AppL10n.of(context)] anywhere below.
 class AppL10n extends InheritedWidget {

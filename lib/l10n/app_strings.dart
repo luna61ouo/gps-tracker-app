@@ -123,6 +123,9 @@ abstract class AppStrings {
   String get batteryModeTitle;
   String get batteryModeOnDesc;
   String get batteryModeOffDesc;
+  // Timezone section
+  String get sectionTimezone;
+  String get timezoneAuto;
 
   // Guide / links section
   String get sectionGuide;

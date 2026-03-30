@@ -1,3 +1,4 @@
+import '../config.dart';
 import 'app_strings.dart';
 
 class AppStringsEn extends AppStrings {
@@ -88,7 +89,7 @@ class AppStringsEn extends AppStrings {
   @override String get relayInfoSelfHostTitle => 'Self-hosting';
   @override String get relayInfoSelfHostBody =>
       'If you have a public IP or your own server, you can deploy gps-relay as a private relay node and have full control over the data flow.\n\n'
-      'Source code and setup guide:\ngithub.com/myasaliu/gps-relay';
+      'Source code and setup guide:\n$kGithubRelayDisplay';
 
   // Confirm mode section
   @override String get sectionConfirmMode => 'Sharing Mode';
@@ -141,15 +142,18 @@ class AppStringsEn extends AppStrings {
   @override String get batteryModeOffDesc =>
       'Disable system battery optimization. Recommended for some Android devices (e.g. Xiaomi) '
       'that aggressively kill background services. Usually not needed on Pixel devices.';
+  // Timezone section
+  @override String get sectionTimezone => 'Display Timezone';
+  @override String get timezoneAuto => 'Auto (system)';
 
   // Guide / links section
   @override String get sectionGuide => 'Documentation';
   @override String get guideTutorialTitle => 'Installation & Setup Guide';
   @override String get guideTutorialSubtitle => 'How to use with OpenClaw';
   @override String get guideBridgeTitle => 'gps-bridge Source Code';
-  @override String get guideBridgeSubtitle => 'github.com/myasaliu/gps-bridge';
+  @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay Source Code';
-  @override String get guideRelaySubtitle => 'github.com/myasaliu/gps-relay';
+  @override String get guideRelaySubtitle => kGithubRelayDisplay;
 
   // Language section
   @override String get sectionLanguage => 'Language';

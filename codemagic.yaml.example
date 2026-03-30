@@ -1,0 +1,46 @@
+workflows:
+  ios-testflight:
+    name: iOS TestFlight Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: <YOUR_API_KEY_NAME>
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: <YOUR_BUNDLE_ID>
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: flutter packages pub get
+
+      - name: Install pods
+        script: find . -name "Podfile" -execdir pod install \;
+
+      - name: Build iOS
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - External Testers
+      email:
+        recipients:
+          - <YOUR_EMAIL>
+        notify:
+          success: true
+          failure: true

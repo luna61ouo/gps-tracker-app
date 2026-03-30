@@ -1,3 +1,4 @@
+import '../config.dart';
 import 'app_strings.dart';
 
 class AppStringsZh extends AppStrings {
@@ -87,7 +88,7 @@ class AppStringsZh extends AppStrings {
   @override String get relayInfoSelfHostTitle => '自架中繼伺服器';
   @override String get relayInfoSelfHostBody =>
       '若你有公開 IP 或自己的伺服器，可以自行部署 gps-relay 作為私人中繼節點，完全掌控資料流向。\n\n'
-      '原始碼與教學請參考：\ngithub.com/myasaliu/gps-relay';
+      '原始碼與教學請參考：\n$kGithubRelayDisplay';
 
   // Confirm mode section
   @override String get sectionConfirmMode => '提取確認方式';
@@ -136,15 +137,18 @@ class AppStringsZh extends AppStrings {
   @override String get batteryModeOnDesc => '已停用電池優化，背景追蹤更穩定';
   @override String get batteryModeOffDesc =>
       '停用系統電池優化，適合部分 Android 裝置（如 Xiaomi）避免背景服務被終止。Pixel 等原廠裝置通常不需要。';
+  // Timezone section
+  @override String get sectionTimezone => '顯示時區';
+  @override String get timezoneAuto => '自動（系統）';
 
   // Guide / links section
   @override String get sectionGuide => '說明與教學';
   @override String get guideTutorialTitle => '安裝與設定教學';
   @override String get guideTutorialSubtitle => '如何搭配 OpenClaw 使用';
   @override String get guideBridgeTitle => 'gps-bridge 原始碼';
-  @override String get guideBridgeSubtitle => 'github.com/myasaliu/gps-bridge';
+  @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay 原始碼';
-  @override String get guideRelaySubtitle => 'github.com/myasaliu/gps-relay';
+  @override String get guideRelaySubtitle => kGithubRelayDisplay;
 
   // Language section
   @override String get sectionLanguage => '語言';

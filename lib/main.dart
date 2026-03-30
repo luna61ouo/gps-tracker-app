@@ -35,12 +35,15 @@ class _GpsTrackerAppState extends State<GpsTrackerApp> {
   void initState() {
     super.initState();
     appLocale.addListener(_onLocaleChange);
+    appTimezone.addListener(_onLocaleChange);
     _loadSavedLanguage();
+    _loadSavedTimezone();
   }
 
   @override
   void dispose() {
     appLocale.removeListener(_onLocaleChange);
+    appTimezone.removeListener(_onLocaleChange);
     super.dispose();
   }
 
@@ -50,6 +53,12 @@ class _GpsTrackerAppState extends State<GpsTrackerApp> {
     final prefs = await SharedPreferences.getInstance();
     final lang = prefs.getString(kLanguageKey) ?? 'auto';
     appLocale.value = resolveStrings(lang);
+  }
+
+  Future<void> _loadSavedTimezone() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getInt(kTimezoneOffsetKey) ?? kTimezoneAuto;
+    appTimezone.value = stored == kTimezoneAuto ? null : stored;
   }
 
   @override
@@ -661,7 +670,9 @@ class _TrackingButton extends StatelessWidget {
 String _formatTime(String? isoUtc) {
   if (isoUtc == null || isoUtc.isEmpty) return '—';
   try {
-    final dt = DateTime.parse(isoUtc).toLocal();
+    final utc = DateTime.parse(isoUtc).toUtc();
+    final offset = appTimezone.value;
+    final dt = offset == null ? utc.toLocal() : utc.add(Duration(minutes: offset));
     final display =
         '${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
