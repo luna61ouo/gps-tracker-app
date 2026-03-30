@@ -233,6 +233,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  void _showPairingHelp(BuildContext context, AppStrings s) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(s.pairingHelpTitle),
+        content: SingleChildScrollView(
+          child: Text(s.pairingHelpBody),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _confirmModeHelperText(AppStrings s) {
     switch (_confirmMode) {
       case 'ask':
@@ -508,7 +526,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // ── 配對設定 ───────────────────────────────────────────────────────
-          _SectionHeader(title: s.sectionPairing, icon: Icons.link),
+          Row(
+            children: [
+              Expanded(child: _SectionHeader(title: s.sectionPairing, icon: Icons.link)),
+              IconButton(
+                icon: const Icon(Icons.help_outline, size: 20),
+                tooltip: s.pairingHelpTitle,
+                onPressed: () => _showPairingHelp(context, s),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _tokenController,

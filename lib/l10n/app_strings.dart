@@ -114,6 +114,8 @@ abstract class AppStrings {
 
   // Pairing section
   String get sectionPairing;
+  String get pairingHelpTitle;
+  String get pairingHelpBody;
   String get labelToken;
   String get labelTokenHint;
   String get labelPubKey;

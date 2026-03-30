@@ -127,9 +127,19 @@ class AppStringsZh extends AppStrings {
 
   // Pairing section
   @override String get sectionPairing => '配對設定';
+  @override String get pairingHelpTitle => '如何取得配對資訊？';
+  @override String get pairingHelpBody =>
+      '配對碼和公鑰由 OpenClaw 的 gps-bridge 產生。\n\n'
+      '請在 OpenClaw 中說：\n\n'
+      '「我想設定 GPS 追蹤，幫我產生配對碼」\n\n'
+      'OpenClaw 會自動：\n'
+      '1. 產生 Bridge 公鑰\n'
+      '2. 產生配對碼（Token）\n'
+      '3. 啟動接收器等待連線\n\n'
+      '把 OpenClaw 提供的公鑰和配對碼貼到下方欄位即可。';
   @override String get labelToken => 'Token（配對碼）';
   @override String get labelTokenHint => '由 OpenClaw 提供';
-  @override String get labelPubKey => '伺服器公鑰';
+  @override String get labelPubKey => 'Bridge 公鑰';
   @override String get labelPubKeyHint => '由 OpenClaw 提供（Base64）';
 
   // Advanced section
