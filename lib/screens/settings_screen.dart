@@ -760,10 +760,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.menu_book),
             title: Text(s.guideTutorialTitle),
             subtitle: Text(s.guideTutorialSubtitle),
-            trailing: const Icon(Icons.open_in_new, size: 16),
-            onTap: () async {
-              final uri = Uri.parse('$kGithubBridgeUrl#readme');
-              if (await canLaunchUrl(uri)) launchUrl(uri);
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: Text(s.guideTutorialTitle),
+                  content: SingleChildScrollView(
+                    child: Text(s.guideTutorialBody),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(s.btnGotIt),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
           const SizedBox(height: 8),

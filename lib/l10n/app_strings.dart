@@ -155,6 +155,7 @@ abstract class AppStrings {
   String get sectionGuide;
   String get guideTutorialTitle;
   String get guideTutorialSubtitle;
+  String get guideTutorialBody;
   String get guideBridgeTitle;
   String get guideBridgeSubtitle;
   String get guideRelayTitle;

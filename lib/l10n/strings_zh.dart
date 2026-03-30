@@ -188,6 +188,26 @@ class AppStringsZh extends AppStrings {
   @override String get sectionGuide => '說明與教學';
   @override String get guideTutorialTitle => '安裝與設定教學';
   @override String get guideTutorialSubtitle => '如何搭配 OpenClaw 使用';
+  @override String get guideTutorialBody =>
+      '【步驟 1】安裝 Bridge\n'
+      '在設定頁上方點選「安裝 Bridge」，複製指令後貼給 OpenClaw。\n'
+      'OpenClaw 會自動安裝 gps-bridge。\n\n'
+      '【步驟 2】取得配對碼和公鑰\n'
+      '安裝完成後，跟 OpenClaw 說「幫我設定 GPS 追蹤」。\n'
+      'OpenClaw 會產生：\n'
+      '  ・配對碼（Token）\n'
+      '  ・Bridge 公鑰\n\n'
+      '【步驟 3】填入配對資訊\n'
+      '在設定頁下方的「配對設定」區塊，\n'
+      '依序填入 Token 和 Bridge 公鑰。\n\n'
+      '【步驟 4】開始追蹤\n'
+      '回到主畫面，點選「開始追蹤」。\n'
+      '手機會自動加密並傳送 GPS 座標到你的電腦。\n\n'
+      '【驗證】\n'
+      '跟 OpenClaw 說「我在哪裡？」\n'
+      '如果它能回答你的位置，代表配對成功！\n\n'
+      '注意：手機顯示「傳送中」不代表配對正確。\n'
+      '唯一的驗證方式是 OpenClaw 能讀到你的位置。';
   @override String get guideBridgeTitle => 'gps-bridge 原始碼';
   @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay 原始碼';

@@ -193,6 +193,26 @@ class AppStringsEn extends AppStrings {
   @override String get sectionGuide => 'Documentation';
   @override String get guideTutorialTitle => 'Installation & Setup Guide';
   @override String get guideTutorialSubtitle => 'How to use with OpenClaw';
+  @override String get guideTutorialBody =>
+      '【Step 1】Install Bridge\n'
+      'Tap "Install Bridge" at the top of Settings, copy the command and paste it to OpenClaw.\n'
+      'OpenClaw will automatically install gps-bridge.\n\n'
+      '【Step 2】Get pairing token and public key\n'
+      'After installation, tell OpenClaw: "Help me set up GPS tracking."\n'
+      'OpenClaw will generate:\n'
+      '  - Pairing token\n'
+      '  - Bridge public key\n\n'
+      '【Step 3】Enter pairing info\n'
+      'In the "Pairing" section below,\n'
+      'enter the Token and Bridge public key.\n\n'
+      '【Step 4】Start tracking\n'
+      'Go back to the main page and tap "Start Tracking".\n'
+      'Your phone will automatically encrypt and send GPS to your computer.\n\n'
+      '【Verify】\n'
+      'Tell OpenClaw: "Where am I?"\n'
+      'If it can answer your location, pairing is successful!\n\n'
+      'Note: The phone showing "sending" does NOT confirm correct pairing.\n'
+      'The only way to verify is that OpenClaw can read your location.';
   @override String get guideBridgeTitle => 'gps-bridge Source Code';
   @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay Source Code';
