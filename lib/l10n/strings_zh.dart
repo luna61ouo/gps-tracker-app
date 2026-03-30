@@ -31,6 +31,19 @@ class AppStringsZh extends AppStrings {
   @override String get helpPrivacy =>
       '資料安全：伺服器只轉送加密資料，無法讀取你的位置。';
 
+  // ── Onboarding ──────────────────────────────────────────────────────────
+  @override String get onboardingPage1Title => '隱私優先的 GPS 追蹤';
+  @override String get onboardingPage1Body =>
+      '端對端加密，你的位置只有你自己的電腦能解密。\n中繼伺服器只轉發密文，完全無法讀取。';
+  @override String get onboardingPage2Title => '運作方式';
+  @override String get onboardingPage2Body =>
+      '手機加密 GPS 座標 → 透過中繼伺服器轉發 → 你的電腦解密並儲存。\nOpenClaw 在本機查詢你的位置。';
+  @override String get onboardingPage3Title => '快速設定';
+  @override String get onboardingPage3Body =>
+      '進入設定頁 → 點選「安裝 Bridge」\n→ 複製指令貼給 OpenClaw\n→ OpenClaw 會提供配對碼和公鑰\n→ 填入後即可開始追蹤';
+  @override String get onboardingNext => '下一步';
+  @override String get onboardingStart => '開始使用';
+
   // ── Common buttons ───────────────────────────────────────────────────────
   @override String get btnGotIt => '了解了';
   @override String get btnCancel => '取消';
@@ -75,7 +88,7 @@ class AppStringsZh extends AppStrings {
   // Relay section
   @override String get sectionRelay => '中繼資料轉送伺服器';
   @override String get relayDropdownHint => '尚未設定，請點 + 新增';
-  @override String get relayOfficialLabel => '官方路由';
+  @override String get relayOfficialLabel => '預設中繼';
   @override String get relayAddTitle => '新增 Relay 伺服器';
   @override String get relayAddHint => 'wss://example.com/relay';
   @override String get relayDeleteTitle => '刪除伺服器';

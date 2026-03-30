@@ -30,6 +30,16 @@ abstract class AppStrings {
   String get helpSetupDesc;
   String get helpPrivacy;
 
+  // ── Onboarding ──────────────────────────────────────────────────────────
+  String get onboardingPage1Title;
+  String get onboardingPage1Body;
+  String get onboardingPage2Title;
+  String get onboardingPage2Body;
+  String get onboardingPage3Title;
+  String get onboardingPage3Body;
+  String get onboardingNext;
+  String get onboardingStart;
+
   // ── Common buttons ───────────────────────────────────────────────────────
   String get btnGotIt;
   String get btnCancel;

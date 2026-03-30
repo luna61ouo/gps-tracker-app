@@ -31,6 +31,19 @@ class AppStringsEn extends AppStrings {
   @override String get helpPrivacy =>
       'Security: the relay server only forwards encrypted data and cannot read your location.';
 
+  // ── Onboarding ──────────────────────────────────────────────────────────
+  @override String get onboardingPage1Title => 'Privacy-first GPS Tracking';
+  @override String get onboardingPage1Body =>
+      'End-to-end encrypted — only your own computer can decrypt your location.\nThe relay server only forwards ciphertext.';
+  @override String get onboardingPage2Title => 'How it works';
+  @override String get onboardingPage2Body =>
+      'Phone encrypts GPS → forwarded through relay → your computer decrypts and stores.\nOpenClaw queries your location locally.';
+  @override String get onboardingPage3Title => 'Quick Setup';
+  @override String get onboardingPage3Body =>
+      'Go to Settings → tap "Install Bridge"\n→ Copy the instructions to OpenClaw\n→ OpenClaw provides a pairing token and public key\n→ Enter them and start tracking';
+  @override String get onboardingNext => 'Next';
+  @override String get onboardingStart => 'Get Started';
+
   // ── Common buttons ───────────────────────────────────────────────────────
   @override String get btnGotIt => 'Got it';
   @override String get btnCancel => 'Cancel';
@@ -76,7 +89,7 @@ class AppStringsEn extends AppStrings {
   // Relay section
   @override String get sectionRelay => 'Relay Server';
   @override String get relayDropdownHint => 'Not configured — tap + to add';
-  @override String get relayOfficialLabel => 'Official Relay';
+  @override String get relayOfficialLabel => 'Default Relay';
   @override String get relayAddTitle => 'Add Relay Server';
   @override String get relayAddHint => 'wss://example.com/relay';
   @override String get relayDeleteTitle => 'Delete Server';
