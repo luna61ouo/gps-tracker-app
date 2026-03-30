@@ -212,6 +212,8 @@ class AppStringsZh extends AppStrings {
   @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay 原始碼';
   @override String get guideRelaySubtitle => kGithubRelayDisplay;
+  @override String get guideReplayTitle => '重新顯示引導教學';
+  @override String get guideReplaySubtitle => '再次顯示首次開啟的設定引導';
 
   // Language section
   @override String get sectionLanguage => '語言';

@@ -160,6 +160,8 @@ abstract class AppStrings {
   String get guideBridgeSubtitle;
   String get guideRelayTitle;
   String get guideRelaySubtitle;
+  String get guideReplayTitle;
+  String get guideReplaySubtitle;
 
   // Language section
   String get sectionLanguage;

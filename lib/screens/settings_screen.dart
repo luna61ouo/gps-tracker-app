@@ -13,6 +13,7 @@ import '../l10n/app_strings.dart';
 import '../l10n/localizations.dart';
 import '../services/background_service.dart';
 import '../main.dart' show kRelayUrlListKey;
+import 'onboarding_screen.dart' show kOnboardingCompleteKey;
 
 class SettingsScreen extends StatefulWidget {
   final bool showInstallGuide;
@@ -806,6 +807,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () async {
               final uri = Uri.parse(kGithubRelayUrl);
               if (await canLaunchUrl(uri)) launchUrl(uri);
+            },
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            leading: const Icon(Icons.replay),
+            title: Text(s.guideReplayTitle),
+            subtitle: Text(s.guideReplaySubtitle),
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(kOnboardingCompleteKey, false);
+              if (!mounted) return;
+              // Pop with result to tell _AppEntry to recheck onboarding
+              Navigator.of(context).pop('replay_onboarding');
             },
           ),
         ],

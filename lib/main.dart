@@ -343,12 +343,19 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   }
 
   Future<void> _goToSettings({bool showInstallGuide = false}) async {
-    await Navigator.push(
+    final result = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (_) => SettingsScreen(showInstallGuide: showInstallGuide),
       ),
     );
+    if (result == 'replay_onboarding') {
+      // Trigger _AppEntry to recheck onboarding state
+      if (mounted && context.findAncestorStateOfType<_AppEntryState>() != null) {
+        context.findAncestorStateOfType<_AppEntryState>()!._checkOnboarding();
+      }
+      return;
+    }
     _runSelfCheck();
   }
 

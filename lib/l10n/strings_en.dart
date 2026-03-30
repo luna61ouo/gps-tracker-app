@@ -217,6 +217,8 @@ class AppStringsEn extends AppStrings {
   @override String get guideBridgeSubtitle => kGithubBridgeDisplay;
   @override String get guideRelayTitle => 'gps-relay Source Code';
   @override String get guideRelaySubtitle => kGithubRelayDisplay;
+  @override String get guideReplayTitle => 'Replay Setup Guide';
+  @override String get guideReplaySubtitle => 'Show the first-launch setup guide again';
 
   // Language section
   @override String get sectionLanguage => 'Language';
