@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -158,6 +159,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'bgInterval': _bgIntervalSeconds,
       });
     }
+    _showSavedHint();
+  }
+
+  Timer? _savedHintTimer;
+
+  void _showSavedHint() {
+    _savedHintTimer?.cancel();
+    _savedHintTimer = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已儲存，設定立即生效'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
   }
 
   Future<void> _showAddRelayDialog(AppStrings s) async {
@@ -228,6 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _savedHintTimer?.cancel();
     _tokenController.dispose();
     _pubKeyController.dispose();
     super.dispose();
