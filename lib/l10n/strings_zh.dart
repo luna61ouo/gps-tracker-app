@@ -96,7 +96,7 @@ class AppStringsZh extends AppStrings {
   // Confirm mode section
   @override String get sectionConfirmMode => '提取確認方式';
   @override String get confirmModeAuto => '自動（持續推送）';
-  @override String get confirmModeAsk => '詢問（OpenClaw 請求時通知）';
+  @override String get confirmModeAsk => '詢問（開發中）';
   @override String get confirmModeDeny => '拒絕（不傳送位置）';
   @override String get confirmHintAuto => 'OpenClaw 可隨時取得最新位置';
   @override String get confirmHintAsk => '收到請求時顯示通知，確認後才回傳位置';

@@ -97,7 +97,7 @@ class AppStringsEn extends AppStrings {
   // Confirm mode section
   @override String get sectionConfirmMode => 'Sharing Mode';
   @override String get confirmModeAuto => 'Auto (continuous push)';
-  @override String get confirmModeAsk => 'Ask (notify when OpenClaw requests)';
+  @override String get confirmModeAsk => 'Ask (coming soon)';
   @override String get confirmModeDeny => 'Deny (never send location)';
   @override String get confirmHintAuto => 'OpenClaw can get your latest location at any time';
   @override String get confirmHintAsk =>
