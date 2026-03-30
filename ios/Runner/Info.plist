@@ -43,6 +43,12 @@
 		<string>processing</string>
 	</array>
 
+	<!-- BGTaskScheduler 允許的背景任務識別碼 -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.luna61ouo.clawgpstracker.background</string>
+	</array>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
