@@ -1,9 +1,18 @@
 // Copy this file to config.dart and fill in your values.
 // config.dart is listed in .gitignore and should never be committed.
 
-// Default relay shown to users in the app (leave empty to require manual setup)
-const String kDefaultRelayUrl = '';
+// Default relay shown to users in the app
+const String kDefaultRelayUrl = 'wss://your-relay.example.com/relay';
+
+// GitHub repository URLs — update here to change everywhere in the app
+const String kGithubBridgeUrl = 'https://github.com/luna61ouo/gps-bridge';
+const String kGithubRelayUrl  = 'https://github.com/luna61ouo/gps-relay';
+const String kGithubTrackerUrl = 'https://github.com/luna61ouo/gps-tracker-app';
+
+// Display text versions (without https://)
+const String kGithubBridgeDisplay = 'github.com/luna61ouo/gps-bridge';
+const String kGithubRelayDisplay  = 'github.com/luna61ouo/gps-relay';
 
 // AdMob (fill in after creating AdMob account)
-const String kAdMobAppId = ''; // e.g. ca-app-pub-xxxxxxxx~xxxxxxxxxx
-const String kBannerAdUnitId = ''; // e.g. ca-app-pub-xxxxxxxx/xxxxxxxxxx
+const String kAdMobAppId = '';
+const String kBannerAdUnitId = '';

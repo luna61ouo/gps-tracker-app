@@ -13,6 +13,10 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.luna61ouo.clawgpstracker
     scripts:
+      - name: Generate config.dart
+        script: |
+          cp lib/config.dart.example lib/config.dart
+
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
