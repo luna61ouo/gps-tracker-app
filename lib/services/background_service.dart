@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 
@@ -62,6 +63,10 @@ Position? _lastKnownPosition;
 
 // Timestamp of the last actual GPS acquisition (not just a heartbeat send)
 String? _lastGpsTimestamp;
+
+// iOS location stream subscription
+StreamSubscription<Position>? _iosLocationSub;
+DateTime? _lastIosReport;
 
 /// Returns current UTC time as ISO-8601 truncated to 1 decimal place (tenths of a second).
 /// e.g. "2026-03-27T10:23:45.1Z" instead of "2026-03-27T10:23:45.123456Z"
@@ -193,6 +198,8 @@ void onStart(ServiceInstance service) async {
     _wsChannel = null;
     _accelSub?.cancel();
     _accelSub = null;
+    _iosLocationSub?.cancel();
+    _iosLocationSub = null;
     _serviceRunning = false;
     service.stopSelf();
   });
@@ -231,8 +238,37 @@ void onStart(ServiceInstance service) async {
   });
 
   _startMotionDetection();
-  await _trackAndReport(service);
-  _scheduleNext(service);
+
+  if (Platform.isIOS) {
+    // iOS: use location stream to keep app alive in background.
+    // Future.delayed timers get suspended by iOS when backgrounded.
+    _lastIosReport = DateTime.now();
+    _iosLocationSub = Geolocator.getPositionStream(
+      locationSettings: AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.other,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      ),
+    ).listen((position) async {
+      final now = DateTime.now();
+      final interval = _useFgInterval ? kFgIntervalSeconds : _bgInterval;
+      if (_lastIosReport != null &&
+          now.difference(_lastIosReport!).inSeconds < interval) {
+        return; // throttle to configured interval
+      }
+      _lastIosReport = now;
+      _lastKnownPosition = position;
+      _lastGpsTimestamp = _nowIso();
+      _hasMovedSinceLastFix = true;
+      await _trackAndReport(service);
+    });
+  } else {
+    // Android: use timer-based scheduling with foreground service
+    await _trackAndReport(service);
+    _scheduleNext(service);
+  }
 }
 
 /// Returns the existing WebSocket channel, or creates a new one.
