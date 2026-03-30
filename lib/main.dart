@@ -297,6 +297,28 @@ class _TrackingHomePageState extends State<TrackingHomePage>
       await prefs.setBool(kTrackingEnabledKey, false);
       return;
     }
+    // Check pairing info before starting
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(kTokenKey) ?? '';
+    final pubKey = prefs.getString(kServerPubKeyKey) ?? '';
+    if (token.isEmpty || pubKey.isEmpty) {
+      if (mounted) {
+        final missing = <String>[];
+        if (token.isEmpty) missing.add(s.labelToken);
+        if (pubKey.isEmpty) missing.add(s.labelPubKey);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${s.warnMissingPairing}${missing.join("、")}'),
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: s.btnGoSettings,
+              onPressed: _goToSettings,
+            ),
+          ),
+        );
+      }
+      return;
+    }
     final hasPermission = await _requestPermissions();
     if (!hasPermission) {
       if (mounted) {
@@ -309,7 +331,6 @@ class _TrackingHomePageState extends State<TrackingHomePage>
       }
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(kTrackingEnabledKey, true);
     await service.startService();
     setState(() => _isTracking = true);

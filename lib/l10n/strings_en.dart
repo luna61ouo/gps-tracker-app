@@ -65,6 +65,7 @@ class AppStringsEn extends AppStrings {
   @override String get warnNoPubKey => 'Server public key not configured';
   @override String get warnNoRelay => 'Relay server not configured';
   @override String get warnNoToken => 'Pairing token not configured';
+  @override String get warnMissingPairing => 'Please complete pairing setup: ';
   @override String get warnNeedBgPerm =>
       'Background location permission required\nGo to Settings and enable "Always Allow" location';
 

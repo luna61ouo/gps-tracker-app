@@ -64,6 +64,7 @@ class AppStringsZh extends AppStrings {
   @override String get warnNoPubKey => '尚未設定伺服器公鑰';
   @override String get warnNoRelay => '尚未設定 Relay 伺服器';
   @override String get warnNoToken => '尚未設定配對碼（Token）';
+  @override String get warnMissingPairing => '請先完成配對設定：';
   @override String get warnNeedBgPerm =>
       '需要背景定位權限\n請至設定開啟「永遠允許」定位';
 

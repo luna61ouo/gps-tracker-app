@@ -60,6 +60,7 @@ abstract class AppStrings {
   String get warnNoPubKey;
   String get warnNoRelay;
   String get warnNoToken;
+  String get warnMissingPairing;
   String get warnNeedBgPerm;
 
   // ── Settings page ─────────────────────────────────────────────────────────
