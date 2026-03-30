@@ -31,9 +31,12 @@ const String kDefaultConfirmMode = 'auto';
 const int kDefaultHistoryGranularitySeconds = 600; // 10 minutes
 const int kDefaultHistoryRetentionHours = 168;    // 1 week
 const String _channelId = 'location_tracking_channel';
+const String _requestChannelId = 'location_request_channel';
 
 // Module-level WebSocket — persists across GPS updates within the same isolate
 WebSocketChannel? _wsChannel;
+StreamSubscription? _wsListenSub;
+bool _pendingLocationRequest = false;
 
 // Outgoing queue — retains up to _kMaxQueueSize encrypted payloads when offline
 final List<Map<String, String>> _sendQueue = [];
@@ -194,12 +197,15 @@ void onStart(ServiceInstance service) async {
   }
 
   service.on('stopService').listen((event) {
+    _wsListenSub?.cancel();
+    _wsListenSub = null;
     _wsChannel?.sink.close();
     _wsChannel = null;
     _accelSub?.cancel();
     _accelSub = null;
     _iosLocationSub?.cancel();
     _iosLocationSub = null;
+    _pendingLocationRequest = false;
     _serviceRunning = false;
     service.stopSelf();
   });
@@ -235,6 +241,13 @@ void onStart(ServiceInstance service) async {
     if (event['bgInterval'] != null) {
       _bgInterval = event['bgInterval'] as int;
     }
+  });
+
+  // User approved a location request (ask mode)
+  service.on('approveRequest').listen((event) {
+    _pendingLocationRequest = true;
+    // Trigger an immediate GPS send
+    _trackAndReport(service);
   });
 
   _startMotionDetection();
@@ -273,7 +286,7 @@ void onStart(ServiceInstance service) async {
 
 /// Returns the existing WebSocket channel, or creates a new one.
 /// Returns null if relay URL or token are not configured.
-Future<WebSocketChannel?> _getChannel() async {
+Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
   if (_wsChannel != null) return _wsChannel;
 
   final prefs = await SharedPreferences.getInstance();
@@ -286,7 +299,60 @@ Future<WebSocketChannel?> _getChannel() async {
       : relayUrl;
   final wsUrl = '$base/ws/$token';
   _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+
+  // Listen for incoming messages from bridge (location_accessed, location_request)
+  _wsListenSub?.cancel();
+  _wsListenSub = _wsChannel!.stream.listen(
+    (message) {
+      try {
+        final data = jsonDecode(message as String);
+        final type = data['type'] as String?;
+        if (type == 'location_accessed') {
+          _showLocalNotification('OpenClaw 已提取位置', '你的位置已被查詢');
+        } else if (type == 'location_request') {
+          _pendingLocationRequest = true;
+          _showLocalNotification(
+            'OpenClaw 想要提取你的位置',
+            '打開 App 以接受或拒絕',
+          );
+          // Notify UI about the request
+          service.invoke('locationRequest', {'pending': true});
+        }
+      } catch (_) {
+        // Not a control message, ignore (could be encrypted GPS from another peer)
+      }
+    },
+    onError: (_) {
+      _wsChannel = null;
+      _wsListenSub = null;
+    },
+    onDone: () {
+      _wsChannel = null;
+      _wsListenSub = null;
+    },
+  );
+
   return _wsChannel;
+}
+
+/// Show a local notification to the user.
+Future<void> _showLocalNotification(String title, String body) async {
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.show(
+    999, // notification ID for bridge messages
+    title,
+    body,
+    NotificationDetails(
+      iOS: const DarwinNotificationDetails(),
+      android: AndroidNotificationDetails(
+        _requestChannelId,
+        'OpenClaw 通知',
+        channelDescription: 'OpenClaw 位置請求通知',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    ),
+  );
 }
 
 /// Get a GPS fix with accuracy better than [thresholdMeters].
@@ -366,7 +432,7 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             _sendQueue.removeAt(0);
           }
 
-          final channel = await _getChannel();
+          final channel = await _getChannel(service);
           if (channel != null) {
             // Flush all queued payloads in order
             final batch = List<Map<String, String>>.from(_sendQueue);
@@ -386,7 +452,37 @@ Future<void> _trackAndReport(ServiceInstance service) async {
         sendError = '未設定伺服器公鑰';
       }
     } else if (_confirmMode == 'ask') {
-      sendError = '詢問模式：等待 OpenClaw 請求';
+      if (_pendingLocationRequest && serverPubKey.isNotEmpty) {
+        // User approved or request came in — send location once
+        _pendingLocationRequest = false;
+        try {
+          final encrypted = await encryptGpsPayload(
+            lat: position.latitude,
+            lng: position.longitude,
+            timestamp: timestamp,
+            serverPubKeyB64: serverPubKey,
+            extraFields: {
+              'save_history': false,
+              'retention_hours': _historyRetentionHours,
+              'history_granularity_seconds': _historyGranularitySeconds,
+              'update_interval_seconds': _bgInterval,
+              'confirm_mode': _confirmMode,
+            },
+          );
+          final channel = await _getChannel(service);
+          if (channel != null) {
+            channel.sink.add(jsonEncode(encrypted));
+            _lastSentAt = _nowIso();
+          } else {
+            sendError = '未連線至 Relay';
+          }
+        } catch (e) {
+          _wsChannel = null;
+          sendError = '傳送失敗';
+        }
+      } else {
+        sendError = '詢問模式：等待 OpenClaw 請求';
+      }
     } else {
       // deny
       sendError = '拒絕模式：不傳送位置';

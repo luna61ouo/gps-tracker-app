@@ -107,6 +107,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     WidgetsBinding.instance.addObserver(this);
     _checkServiceStatus();
     _listenToLocationUpdates();
+    _listenToLocationRequests();
     _ensureDefaultRelay();
     _runSelfCheck();
     _startWatchdog();
@@ -178,6 +179,36 @@ class _TrackingHomePageState extends State<TrackingHomePage>
           _lastError = event['error'] as String?;
         }
       });
+    });
+  }
+
+  void _listenToLocationRequests() {
+    FlutterBackgroundService().on('locationRequest').listen((event) {
+      if (event == null || !mounted) return;
+      if (event['pending'] == true) {
+        // Show a dialog asking the user to approve
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('OpenClaw 想要提取你的位置'),
+            content: const Text('是否允許傳送目前位置？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('拒絕'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Tell the background service to send location
+                  FlutterBackgroundService().invoke('approveRequest');
+                },
+                child: const Text('接受'),
+              ),
+            ],
+          ),
+        );
+      }
     });
   }
 
