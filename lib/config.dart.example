@@ -2,7 +2,7 @@
 // config.dart is listed in .gitignore and should never be committed.
 
 // Default relay shown to users in the app
-const String kDefaultRelayUrl = 'wss://your-relay.example.com/relay';
+const String kDefaultRelayUrl = 'wss://your-relay-server.example.com/relay';
 
 // GitHub repository URLs — update here to change everywhere in the app
 const String kGithubBridgeUrl = 'https://github.com/luna61ouo/gps-bridge';

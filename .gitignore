@@ -1,6 +1,12 @@
 # App config (contains sensitive data — do not commit)
 lib/config.dart
 
+# Claude Code local settings
+.claude/
+
+# Screenshots (not needed in repo)
+screenshots/
+
 # Miscellaneous
 *.class
 *.log
