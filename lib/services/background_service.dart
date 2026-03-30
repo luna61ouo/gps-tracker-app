@@ -73,42 +73,47 @@ String _nowIso() {
 }
 
 Future<void> initializeService() async {
-  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  await flutterLocalNotificationsPlugin.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    ),
-  );
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          _channelId,
-          'GPS 追蹤服務',
-          description: '背景 GPS 定位追蹤通知',
-          importance: Importance.low,
-        ),
-      );
+  try {
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    await flutterLocalNotificationsPlugin.initialize(
+      const InitializationSettings(
+        iOS: DarwinInitializationSettings(),
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _channelId,
+            'GPS 追蹤服務',
+            description: '背景 GPS 定位追蹤通知',
+            importance: Importance.low,
+          ),
+        );
 
-  final service = FlutterBackgroundService();
+    final service = FlutterBackgroundService();
 
-  await service.configure(
-    androidConfiguration: AndroidConfiguration(
-      onStart: onStart,
-      autoStart: true,
-      isForegroundMode: true,
-      notificationChannelId: _channelId,
-      initialNotificationTitle: 'GPS 追蹤服務',
-      initialNotificationContent: '正在追蹤位置...',
-      foregroundServiceNotificationId: 888,
-    ),
-    iosConfiguration: IosConfiguration(
-      autoStart: false,
-      onForeground: onStart,
-      onBackground: onIosBackground,
-    ),
-  );
+    await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: onStart,
+        autoStart: true,
+        isForegroundMode: true,
+        notificationChannelId: _channelId,
+        initialNotificationTitle: 'GPS 追蹤服務',
+        initialNotificationContent: '正在追蹤位置...',
+        foregroundServiceNotificationId: 888,
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: false,
+        onForeground: onStart,
+        onBackground: onIosBackground,
+      ),
+    );
+  } catch (e) {
+    debugPrint('initializeService error: $e');
+  }
 }
 
 @pragma('vm:entry-point')
