@@ -1,15 +1,15 @@
 workflows:
-  ios-development:
-    name: iOS Development Build
+  ios-testflight:
+    name: iOS TestFlight Build
     max_build_duration: 60
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
       ios_signing:
-        distribution_type: development
-        bundle_identifier: com.openclaw.gpstracker
-
+        distribution_type: app_store
+        bundle_identifier: com.luna61ouo.clawgpstracker
     scripts:
       - name: Set up code signing settings on Xcode project
         script: |
@@ -21,25 +21,24 @@ workflows:
       - name: Install pods
         script: find . -name "Podfile" -execdir pod install \;
 
-      - name: Build iOS (no codesign)
+      - name: Build iOS
         script: |
-          flutter build ios --release --no-codesign
-
-      - name: Export IPA
-        script: |
-          xcode-project build-ipa \
-            --workspace ios/Runner.xcworkspace \
-            --scheme Runner
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
 
     publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - External Testers
       email:
         recipients:
-          - your@email.com
+          - your-email@example.com
         notify:
           success: true
           failure: true
