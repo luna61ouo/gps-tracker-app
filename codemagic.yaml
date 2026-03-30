@@ -9,6 +9,8 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+      vars:
+        APP_STORE_APPLE_ID: "6761358773"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.luna61ouo.clawgpstracker
@@ -30,7 +32,9 @@ workflows:
 
       - name: Build iOS
         script: |
+          BUILD_NUMBER=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1))
           flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
