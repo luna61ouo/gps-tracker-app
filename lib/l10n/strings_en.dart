@@ -84,6 +84,8 @@ class AppStringsEn extends AppStrings {
   @override String get warnMissingPairing => 'Please complete pairing setup: ';
   @override String get warnNeedBgPerm =>
       'Background location permission required\nGo to Settings and enable "Always Allow" location';
+  @override String get warnConnectionChanged =>
+      'Connection settings changed. Tracking stopped. Please go back and restart tracking.';
 
   // ── Settings page ─────────────────────────────────────────────────────────
   @override String get settingsTitle => 'Settings';

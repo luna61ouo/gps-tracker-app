@@ -33,6 +33,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _tokenObscured = true;
   bool _pubKeyObscured = true;
 
+  // Track initial connection settings to detect changes
+  String _initToken = '';
+  String _initPubKey = '';
+  String _initRelayUrl = '';
+
   String _confirmMode = kDefaultConfirmMode;
   int _bgIntervalSeconds = kDefaultBgIntervalSeconds;
   int _historyGranularitySeconds = kDefaultHistoryGranularitySeconds;
@@ -69,6 +74,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           urls.contains(selected) ? selected : (urls.isNotEmpty ? urls.first : null);
       _tokenController.text = prefs.getString(kTokenKey) ?? '';
       _pubKeyController.text = prefs.getString(kServerPubKeyKey) ?? '';
+      _initToken = _tokenController.text;
+      _initPubKey = _pubKeyController.text;
+      _initRelayUrl = _selectedRelayUrl ?? '';
       _bgIntervalSeconds = prefs.getInt(kBgIntervalKey) ?? kDefaultBgIntervalSeconds;
       _confirmMode = prefs.getString(kConfirmModeKey) ?? kDefaultConfirmMode;
       _historyGranularitySeconds =
@@ -163,16 +171,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setInt(kHistoryGranularityKey, _historyGranularitySeconds);
     await prefs.setInt(kHistoryRetentionKey, _historyRetentionHours);
 
-    final isRunning = await FlutterBackgroundService().isRunning();
-    if (isRunning) {
-      FlutterBackgroundService().invoke('updateSettings', {
+    // Check if connection settings changed (token, pubkey, relay)
+    final newToken = _tokenController.text.trim();
+    final newPubKey = _pubKeyController.text.trim();
+    final newRelay = _selectedRelayUrl ?? '';
+    final connectionChanged = newToken != _initToken ||
+        newPubKey != _initPubKey ||
+        newRelay != _initRelayUrl;
+
+    final service = FlutterBackgroundService();
+    final isRunning = await service.isRunning();
+
+    if (connectionChanged && isRunning) {
+      // Stop tracking — new connection settings require restart
+      service.invoke('stopService');
+      await prefs.setBool(kTrackingEnabledKey, false);
+      _initToken = newToken;
+      _initPubKey = newPubKey;
+      _initRelayUrl = newRelay;
+      if (mounted) {
+        final s = AppL10n.of(context);
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.warnConnectionChanged),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } else if (isRunning) {
+      service.invoke('updateSettings', {
         'confirmMode': _confirmMode,
         'historyGranularity': _historyGranularitySeconds,
         'historyRetention': _historyRetentionHours,
         'bgInterval': _bgIntervalSeconds,
       });
+      _showSavedHint();
+    } else {
+      _showSavedHint();
     }
-    _showSavedHint();
   }
 
   Timer? _savedHintTimer;

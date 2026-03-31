@@ -75,6 +75,7 @@ abstract class AppStrings {
   String get warnNoToken;
   String get warnMissingPairing;
   String get warnNeedBgPerm;
+  String get warnConnectionChanged;
 
   // ── Settings page ─────────────────────────────────────────────────────────
   String get settingsTitle;

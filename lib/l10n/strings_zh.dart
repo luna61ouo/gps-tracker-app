@@ -83,6 +83,8 @@ class AppStringsZh extends AppStrings {
   @override String get warnMissingPairing => '請先完成配對設定：';
   @override String get warnNeedBgPerm =>
       '需要背景定位權限\n請至設定開啟「永遠允許」定位';
+  @override String get warnConnectionChanged =>
+      '連線設定已變更，已停止追蹤。請返回主畫面重新開始追蹤。';
 
   // ── Settings page ─────────────────────────────────────────────────────────
   @override String get settingsTitle => '設定';
