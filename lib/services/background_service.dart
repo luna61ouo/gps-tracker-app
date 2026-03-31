@@ -342,15 +342,9 @@ void onStart(ServiceInstance service) async {
         return; // throttle to configured interval
       }
       _lastIosReport = now;
-      // Only update GPS timestamp when position actually changed
-      final moved = _lastKnownPosition == null ||
-          (position.latitude - _lastKnownPosition!.latitude).abs() > 0.00001 ||
-          (position.longitude - _lastKnownPosition!.longitude).abs() > 0.00001;
       _lastKnownPosition = position;
-      if (moved) {
-        _lastGpsTimestamp = _nowIso();
-        _hasMovedSinceLastFix = true;
-      }
+      _lastGpsTimestamp = _nowIso();
+      _hasMovedSinceLastFix = true;
       await _trackAndReport(service);
     });
 
@@ -546,6 +540,7 @@ Future<void> _trackAndReport(ServiceInstance service) async {
           }
         }
 
+        _lastSentAt = _nowIso();
         try {
           final encrypted = await encryptGpsPayload(
             lat: position.latitude,
@@ -566,7 +561,6 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             _sendQueue.removeAt(0);
           }
 
-          _lastSentAt = _nowIso();
           final channel = await _getChannel(service);
           if (channel != null) {
             // Flush all queued payloads in order
@@ -594,6 +588,7 @@ Future<void> _trackAndReport(ServiceInstance service) async {
       if (_pendingLocationRequest && serverPubKey.isNotEmpty) {
         // User approved or request came in — send location once
         _pendingLocationRequest = false;
+        _lastSentAt = _nowIso();
         try {
           final encrypted = await encryptGpsPayload(
             lat: position.latitude,
@@ -608,7 +603,6 @@ Future<void> _trackAndReport(ServiceInstance service) async {
               'confirm_mode': _confirmMode,
             },
           );
-          _lastSentAt = _nowIso();
           final channel = await _getChannel(service);
           if (channel != null) {
             channel.sink.add(jsonEncode(encrypted));
