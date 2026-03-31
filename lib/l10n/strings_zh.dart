@@ -60,7 +60,7 @@ class AppStringsZh extends AppStrings {
   @override String get labelLat => '緯度';
   @override String get labelLng => '經度';
   @override String get labelGpsRecord => 'GPS 紀錄';
-  @override String get labelSentAt => '傳送時間';
+  @override String get labelSentAt => '最後傳送';
   @override String get labelSendStatus => '傳送狀態';
   @override String get statusNoDataHint => '尚無定位資料，請按下方按鈕開始追蹤';
   @override String get labelConfirmedAt => '送達確認';

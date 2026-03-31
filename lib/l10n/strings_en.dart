@@ -60,7 +60,7 @@ class AppStringsEn extends AppStrings {
   @override String get labelLat => 'Latitude';
   @override String get labelLng => 'Longitude';
   @override String get labelGpsRecord => 'GPS Record';
-  @override String get labelSentAt => 'Sent At';
+  @override String get labelSentAt => 'Last Attempt';
   @override String get labelSendStatus => 'Send Status';
   @override String get statusNoDataHint =>
       'No location data — tap the button below to start tracking';

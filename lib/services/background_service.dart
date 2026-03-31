@@ -560,6 +560,7 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             _sendQueue.removeAt(0);
           }
 
+          _lastSentAt = _nowIso();
           final channel = await _getChannel(service);
           if (channel != null) {
             // Flush all queued payloads in order
@@ -568,7 +569,6 @@ Future<void> _trackAndReport(ServiceInstance service) async {
               channel.sink.add(jsonEncode(item));
             }
             _sendQueue.clear();
-            _lastSentAt = _nowIso();
             _lastSendTime = DateTime.now();
             _unconfirmedCount++;
             _appendSendLog(status: 'sent', lat: position.latitude, lng: position.longitude);
@@ -602,10 +602,10 @@ Future<void> _trackAndReport(ServiceInstance service) async {
               'confirm_mode': _confirmMode,
             },
           );
+          _lastSentAt = _nowIso();
           final channel = await _getChannel(service);
           if (channel != null) {
             channel.sink.add(jsonEncode(encrypted));
-            _lastSentAt = _nowIso();
             _lastSendTime = DateTime.now();
             _unconfirmedCount++;
             _appendSendLog(status: 'sent', lat: position.latitude, lng: position.longitude);
