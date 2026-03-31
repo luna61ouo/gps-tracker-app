@@ -75,6 +75,7 @@ String? _lastGpsTimestamp;
 // iOS location stream subscription
 StreamSubscription<Position>? _iosLocationSub;
 DateTime? _lastIosReport;
+Timer? _iosHeartbeat;
 
 /// Returns current UTC time as ISO-8601 truncated to 1 decimal place (tenths of a second).
 /// e.g. "2026-03-27T10:23:45.1Z" instead of "2026-03-27T10:23:45.123456Z"
@@ -210,6 +211,8 @@ void onStart(ServiceInstance service) async {
     _accelSub = null;
     _iosLocationSub?.cancel();
     _iosLocationSub = null;
+    _iosHeartbeat?.cancel();
+    _iosHeartbeat = null;
     _pendingLocationRequest = false;
     _serviceRunning = false;
     service.stopSelf();
@@ -245,6 +248,23 @@ void onStart(ServiceInstance service) async {
     }
     if (event['bgInterval'] != null) {
       _bgInterval = event['bgInterval'] as int;
+      // Restart iOS heartbeat with new interval
+      if (Platform.isIOS && _iosHeartbeat != null) {
+        _iosHeartbeat!.cancel();
+        _iosHeartbeat = Timer.periodic(
+          Duration(seconds: _bgInterval),
+          (_) async {
+            if (!_serviceRunning || _lastKnownPosition == null) return;
+            final now = DateTime.now();
+            if (_lastIosReport != null &&
+                now.difference(_lastIosReport!).inSeconds < _bgInterval) {
+              return;
+            }
+            _lastIosReport = now;
+            await _trackAndReport(service);
+          },
+        );
+      }
     }
     // Immediately push updated settings to bridge
     _pushSettingsToBridge(service);
@@ -261,12 +281,14 @@ void onStart(ServiceInstance service) async {
 
   if (Platform.isIOS) {
     // iOS: use location stream to keep app alive in background.
-    // Future.delayed timers get suspended by iOS when backgrounded.
+    // Future.delayed timers get suspended by iOS when backgrounded,
+    // but the location stream keeps the background session active
+    // so a periodic timer can still fire as a heartbeat.
     _lastIosReport = DateTime.now();
     _iosLocationSub = Geolocator.getPositionStream(
       locationSettings: AppleSettings(
         accuracy: LocationAccuracy.high,
-        activityType: ActivityType.other,
+        activityType: ActivityType.otherNavigation,
         allowBackgroundLocationUpdates: true,
         showBackgroundLocationIndicator: true,
         pauseLocationUpdatesAutomatically: false,
@@ -284,6 +306,26 @@ void onStart(ServiceInstance service) async {
       _hasMovedSinceLastFix = true;
       await _trackAndReport(service);
     });
+
+    // Heartbeat: when stationary, CoreLocation stops firing events.
+    // This timer re-sends the last known position so bridge knows
+    // the phone is still alive. Runs every bgInterval; if iOS defers
+    // the timer, it catches up on the next CPU wake.
+    _iosHeartbeat?.cancel();
+    _iosHeartbeat = Timer.periodic(
+      Duration(seconds: _bgInterval),
+      (_) async {
+        if (!_serviceRunning || _lastKnownPosition == null) return;
+        final now = DateTime.now();
+        if (_lastIosReport != null &&
+            now.difference(_lastIosReport!).inSeconds < _bgInterval) {
+          return; // location stream already reported recently
+        }
+        _lastIosReport = now;
+        // Reuse last known position (no new GPS), still send to bridge
+        await _trackAndReport(service);
+      },
+    );
   } else {
     // Android: use timer-based scheduling with foreground service
     await _trackAndReport(service);
