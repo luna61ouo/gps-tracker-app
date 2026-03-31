@@ -13,6 +13,7 @@ import '../l10n/app_strings.dart';
 import '../l10n/localizations.dart';
 import '../services/background_service.dart';
 import '../main.dart' show kRelayUrlListKey;
+import 'send_log_screen.dart';
 import 'onboarding_screen.dart' show kOnboardingCompleteKey;
 
 class SettingsScreen extends StatefulWidget {
@@ -747,6 +748,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 傳送紀錄 ───────────────────────────────────────────────────────
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            leading: const Icon(Icons.history),
+            title: Text(s.sendLogTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SendLogScreen()),
+              );
+            },
           ),
           const SizedBox(height: 24),
 

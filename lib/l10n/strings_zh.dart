@@ -217,6 +217,16 @@ class AppStringsZh extends AppStrings {
   @override String get guideReplayTitle => '重新顯示引導教學';
   @override String get guideReplaySubtitle => '再次顯示首次開啟的設定引導';
 
+  // Send log section
+  @override String get sendLogTitle => '傳送紀錄';
+  @override String get sendLogEmpty => '尚無傳送紀錄';
+  @override String get sendLogStatusSent => '已送出';
+  @override String get sendLogStatusConfirmed => '已確認';
+  @override String get sendLogStatusFailed => '失敗';
+  @override String get sendLogStatusQueued => '暫存';
+  @override String get sendLogClear => '清除紀錄';
+  @override String get sendLogClearConfirm => '確定要清除所有傳送紀錄？';
+
   // Language section
   @override String get sectionLanguage => '語言';
   @override String get langAuto => '自動';

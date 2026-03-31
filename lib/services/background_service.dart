@@ -50,6 +50,47 @@ DateTime? _lastSendTime;      // wall-clock time of last send
 String? _lastConfirmedAt;     // ISO-8601 UTC when bridge confirmed receipt
 int _unconfirmedCount = 0;    // consecutive sends without confirmation
 
+// Send log — persisted in SharedPreferences, max 50 entries
+const String kSendLogKey = 'send_log';
+const int _kMaxSendLog = 50;
+
+/// Append a send log entry and persist to SharedPreferences.
+/// status: 'sent', 'confirmed', 'failed', 'queued'
+Future<void> _appendSendLog({
+  required String status,
+  double? lat,
+  double? lng,
+  String? error,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final list = prefs.getStringList(kSendLogKey) ?? [];
+  final entry = jsonEncode({
+    'time': _nowIso(),
+    'lat': lat,
+    'lng': lng,
+    'status': status,
+    if (error != null) 'error': error,
+  });
+  list.insert(0, entry);
+  if (list.length > _kMaxSendLog) list.removeRange(_kMaxSendLog, list.length);
+  await prefs.setStringList(kSendLogKey, list);
+}
+
+/// Update the most recent 'sent' entry to 'confirmed'.
+Future<void> _confirmLatestSendLog() async {
+  final prefs = await SharedPreferences.getInstance();
+  final list = prefs.getStringList(kSendLogKey) ?? [];
+  for (int i = 0; i < list.length; i++) {
+    final entry = jsonDecode(list[i]) as Map<String, dynamic>;
+    if (entry['status'] == 'sent') {
+      entry['status'] = 'confirmed';
+      list[i] = jsonEncode(entry);
+      break;
+    }
+  }
+  await prefs.setStringList(kSendLogKey, list);
+}
+
 // Motion detection
 bool _hasMovedSinceLastFix = true; // true so first fix always happens
 double? _baselineMagnitude;
@@ -360,6 +401,7 @@ Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
           // Silent delivery confirmation — bridge received and stored data
           _lastConfirmedAt = _nowIso();
           _unconfirmedCount = 0;
+          _confirmLatestSendLog();
           service.invoke('deliveryConfirmed', {
             'confirmedAt': _lastConfirmedAt,
           });
@@ -529,12 +571,15 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             _lastSentAt = _nowIso();
             _lastSendTime = DateTime.now();
             _unconfirmedCount++;
+            _appendSendLog(status: 'sent', lat: position.latitude, lng: position.longitude);
           } else {
             sendError = '未設定 Relay URL 或 Token（暫存 ${_sendQueue.length} 筆）';
+            _appendSendLog(status: 'queued', lat: position.latitude, lng: position.longitude, error: sendError);
           }
         } catch (e) {
           _wsChannel = null; // 重置，下次重新連線
           sendError = '傳送失敗，已暫存 ${_sendQueue.length} 筆';
+          _appendSendLog(status: 'failed', lat: position.latitude, lng: position.longitude, error: sendError);
         }
       } else {
         sendError = '未設定伺服器公鑰';
@@ -563,12 +608,15 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             _lastSentAt = _nowIso();
             _lastSendTime = DateTime.now();
             _unconfirmedCount++;
+            _appendSendLog(status: 'sent', lat: position.latitude, lng: position.longitude);
           } else {
             sendError = '未連線至 Relay';
+            _appendSendLog(status: 'failed', lat: position.latitude, lng: position.longitude, error: sendError);
           }
         } catch (e) {
           _wsChannel = null;
           sendError = '傳送失敗';
+          _appendSendLog(status: 'failed', lat: position.latitude, lng: position.longitude, error: sendError);
         }
       } else {
         sendError = '詢問模式：等待 OpenClaw 請求';

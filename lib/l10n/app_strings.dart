@@ -165,6 +165,16 @@ abstract class AppStrings {
   String get guideReplayTitle;
   String get guideReplaySubtitle;
 
+  // Send log section
+  String get sendLogTitle;
+  String get sendLogEmpty;
+  String get sendLogStatusSent;
+  String get sendLogStatusConfirmed;
+  String get sendLogStatusFailed;
+  String get sendLogStatusQueued;
+  String get sendLogClear;
+  String get sendLogClearConfirm;
+
   // Language section
   String get sectionLanguage;
   String get langAuto;

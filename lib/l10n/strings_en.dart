@@ -222,6 +222,16 @@ class AppStringsEn extends AppStrings {
   @override String get guideReplayTitle => 'Replay Setup Guide';
   @override String get guideReplaySubtitle => 'Show the first-launch setup guide again';
 
+  // Send log section
+  @override String get sendLogTitle => 'Send Log';
+  @override String get sendLogEmpty => 'No send records yet';
+  @override String get sendLogStatusSent => 'Sent';
+  @override String get sendLogStatusConfirmed => 'Confirmed';
+  @override String get sendLogStatusFailed => 'Failed';
+  @override String get sendLogStatusQueued => 'Queued';
+  @override String get sendLogClear => 'Clear Log';
+  @override String get sendLogClearConfirm => 'Clear all send records?';
+
   // Language section
   @override String get sectionLanguage => 'Language';
   @override String get langAuto => 'Auto';
