@@ -342,9 +342,15 @@ void onStart(ServiceInstance service) async {
         return; // throttle to configured interval
       }
       _lastIosReport = now;
+      // Only update GPS timestamp when position actually changed
+      final moved = _lastKnownPosition == null ||
+          (position.latitude - _lastKnownPosition!.latitude).abs() > 0.00001 ||
+          (position.longitude - _lastKnownPosition!.longitude).abs() > 0.00001;
       _lastKnownPosition = position;
-      _lastGpsTimestamp = _nowIso();
-      _hasMovedSinceLastFix = true;
+      if (moved) {
+        _lastGpsTimestamp = _nowIso();
+        _hasMovedSinceLastFix = true;
+      }
       await _trackAndReport(service);
     });
 
