@@ -246,6 +246,8 @@ void onStart(ServiceInstance service) async {
     if (event['bgInterval'] != null) {
       _bgInterval = event['bgInterval'] as int;
     }
+    // Immediately push updated settings to bridge
+    _pushSettingsToBridge(service);
   });
 
   // User approved a location request (ask mode)
@@ -342,6 +344,17 @@ Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
     },
   );
 
+  // Push current settings to bridge on connect so it always has fresh state
+  try {
+    _wsChannel!.sink.add(jsonEncode({
+      'type': 'settings_update',
+      'confirm_mode': _confirmMode,
+      'update_interval_seconds': _bgInterval,
+      'history_granularity_seconds': _historyGranularitySeconds,
+      'retention_hours': _historyRetentionHours,
+    }));
+  } catch (_) {}
+
   return _wsChannel;
 }
 
@@ -363,6 +376,24 @@ Future<void> _showLocalNotification(String title, String body) async {
       ),
     ),
   );
+}
+
+/// Push current settings to bridge via WebSocket (plaintext, no encryption needed).
+/// Bridge uses this to know the phone's confirm mode without waiting for GPS data.
+Future<void> _pushSettingsToBridge(ServiceInstance service) async {
+  final channel = await _getChannel(service);
+  if (channel == null) return;
+  try {
+    channel.sink.add(jsonEncode({
+      'type': 'settings_update',
+      'confirm_mode': _confirmMode,
+      'update_interval_seconds': _bgInterval,
+      'history_granularity_seconds': _historyGranularitySeconds,
+      'retention_hours': _historyRetentionHours,
+    }));
+  } catch (_) {
+    // Best-effort; will be sent again on next settings change or GPS tick
+  }
 }
 
 /// Get a GPS fix with accuracy better than [thresholdMeters].
