@@ -443,6 +443,11 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     await prefs.setBool(kTrackingEnabledKey, true);
     await service.startService();
     setState(() => _isTracking = true);
+    // App is in foreground — tell service to use 5s interval.
+    // Small delay to let the service initialize and register listeners.
+    Future.delayed(const Duration(seconds: 1), () {
+      _notifyServiceInterval(foreground: true);
+    });
   }
 
   void _showHelpDialog() {
