@@ -344,7 +344,9 @@ void onStart(ServiceInstance service) async {
       _lastIosReport = now;
       _lastKnownPosition = position;
       _lastGpsTimestamp = _nowIso();
-      _hasMovedSinceLastFix = true;
+      // Don't force _hasMovedSinceLastFix here — let accelerometer decide.
+      // The stream already acquired GPS (CoreLocation), no need for
+      // _trackAndReport to call _getAccuratePosition() again.
       await _trackAndReport(service);
     });
 
@@ -506,8 +508,8 @@ Future<Position> _getAccuratePosition({
 }
 
 Future<void> _trackAndReport(ServiceInstance service) async {
-  // When stationary in background mode, skip GPS acquisition but reuse last known position
-  final bool skipGps = !_useFgInterval && !_hasMovedSinceLastFix;
+  // When stationary, skip GPS acquisition and reuse last known position (saves battery)
+  final bool skipGps = !_hasMovedSinceLastFix;
   if (skipGps && _lastKnownPosition == null) return; // no data yet, nothing to send
   _hasMovedSinceLastFix = false;
 
