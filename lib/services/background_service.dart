@@ -307,20 +307,23 @@ Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
   final wsUrl = '$base/ws/$token';
   _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
-  // Listen for incoming messages from bridge (location_accessed, location_request)
+  // Listen for incoming messages from bridge
   _wsListenSub?.cancel();
   _wsListenSub = _wsChannel!.stream.listen(
     (message) {
       try {
         final data = jsonDecode(message as String);
         final type = data['type'] as String?;
-        if (type == 'location_accessed') {
+        if (type == 'location_stored') {
+          // Silent delivery confirmation — bridge received and stored data
           _lastConfirmedAt = _nowIso();
           _unconfirmedCount = 0;
-          _showLocalNotification('OpenClaw 已提取位置', '你的位置已被查詢');
           service.invoke('deliveryConfirmed', {
             'confirmedAt': _lastConfirmedAt,
           });
+        } else if (type == 'location_accessed') {
+          // OpenClaw actually queried the location — notify user
+          _showLocalNotification('OpenClaw 已提取位置', '你的位置已被查詢');
         } else if (type == 'location_request') {
           _pendingLocationRequest = true;
           _showLocalNotification(
