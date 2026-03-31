@@ -372,6 +372,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
       }
       return;
     }
+    _checkServiceStatus();
     _runSelfCheck();
   }
 
