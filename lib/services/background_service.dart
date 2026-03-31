@@ -54,41 +54,53 @@ int _unconfirmedCount = 0;    // consecutive sends without confirmation
 const String kSendLogKey = 'send_log';
 const int _kMaxSendLog = 50;
 
+// Serialize all send log operations to prevent race conditions
+Future<void> _sendLogLock = Future.value();
+
+/// Run [action] sequentially — waits for the previous log operation to finish.
+void _runSendLogAction(Future<void> Function() action) {
+  _sendLogLock = _sendLogLock.then((_) => action()).catchError((_) {});
+}
+
 /// Append a send log entry and persist to SharedPreferences.
 /// status: 'sent', 'confirmed', 'failed', 'queued'
-Future<void> _appendSendLog({
+void _appendSendLog({
   required String status,
   double? lat,
   double? lng,
   String? error,
-}) async {
-  final prefs = await SharedPreferences.getInstance();
-  final list = prefs.getStringList(kSendLogKey) ?? [];
-  final entry = jsonEncode({
-    'time': _nowIso(),
-    'lat': lat,
-    'lng': lng,
-    'status': status,
-    if (error != null) 'error': error,
+}) {
+  _runSendLogAction(() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(kSendLogKey) ?? [];
+    final entry = jsonEncode({
+      'time': _nowIso(),
+      'lat': lat,
+      'lng': lng,
+      'status': status,
+      if (error != null) 'error': error,
+    });
+    list.insert(0, entry);
+    if (list.length > _kMaxSendLog) list.removeRange(_kMaxSendLog, list.length);
+    await prefs.setStringList(kSendLogKey, list);
   });
-  list.insert(0, entry);
-  if (list.length > _kMaxSendLog) list.removeRange(_kMaxSendLog, list.length);
-  await prefs.setStringList(kSendLogKey, list);
 }
 
 /// Update the most recent 'sent' entry to 'confirmed'.
-Future<void> _confirmLatestSendLog() async {
-  final prefs = await SharedPreferences.getInstance();
-  final list = prefs.getStringList(kSendLogKey) ?? [];
-  for (int i = 0; i < list.length; i++) {
-    final entry = jsonDecode(list[i]) as Map<String, dynamic>;
-    if (entry['status'] == 'sent') {
-      entry['status'] = 'confirmed';
-      list[i] = jsonEncode(entry);
-      break;
+void _confirmLatestSendLog() {
+  _runSendLogAction(() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(kSendLogKey) ?? [];
+    for (int i = 0; i < list.length; i++) {
+      final entry = jsonDecode(list[i]) as Map<String, dynamic>;
+      if (entry['status'] == 'sent') {
+        entry['status'] = 'confirmed';
+        list[i] = jsonEncode(entry);
+        break;
+      }
     }
-  }
-  await prefs.setStringList(kSendLogKey, list);
+    await prefs.setStringList(kSendLogKey, list);
+  });
 }
 
 // Motion detection
