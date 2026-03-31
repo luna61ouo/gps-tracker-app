@@ -59,6 +59,8 @@ abstract class AppStrings {
   String get labelSentAt;
   String get labelSendStatus;
   String get statusNoDataHint;
+  String get labelConfirmedAt;
+  String get labelUnconfirmed;
 
   // ── Tracking button ──────────────────────────────────────────────────────
   String get btnStop;

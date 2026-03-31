@@ -63,6 +63,8 @@ class AppStringsZh extends AppStrings {
   @override String get labelSentAt => '傳送時間';
   @override String get labelSendStatus => '傳送狀態';
   @override String get statusNoDataHint => '尚無定位資料，請按下方按鈕開始追蹤';
+  @override String get labelConfirmedAt => '送達確認';
+  @override String get labelUnconfirmed => 'Bridge 未確認收到資料，請確認 gps-bridge connect 是否正在執行';
 
   // ── Tracking button ──────────────────────────────────────────────────────
   @override String get btnStop => '停止追蹤';

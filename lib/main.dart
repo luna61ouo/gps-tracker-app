@@ -149,9 +149,12 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   String? _lastError;
   String? _postError;
   StreamSubscription? _locationSub;
+  StreamSubscription? _confirmSub;
   List<_CheckWarning> _warnings = [];
   Timer? _watchdogTimer;
   String? _lastSentAt;
+  String? _lastConfirmedAt;
+  bool _unconfirmed = false;
 
   @override
   void initState() {
@@ -228,9 +231,22 @@ class _TrackingHomePageState extends State<TrackingHomePage>
           if (event['sentAt'] != null) {
             _lastSentAt = event['sentAt'] as String;
           }
+          if (event['confirmedAt'] != null) {
+            _lastConfirmedAt = event['confirmedAt'] as String;
+          }
+          _unconfirmed = event['unconfirmed'] == true;
         } else {
           _lastError = event['error'] as String?;
         }
+      });
+    });
+
+    _confirmSub =
+        FlutterBackgroundService().on('deliveryConfirmed').listen((event) {
+      if (event == null || !mounted) return;
+      setState(() {
+        _lastConfirmedAt = event['confirmedAt'] as String?;
+        _unconfirmed = false;
       });
     });
   }
@@ -493,6 +509,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationSub?.cancel();
+    _confirmSub?.cancel();
     _watchdogTimer?.cancel();
     super.dispose();
   }
@@ -576,6 +593,8 @@ class _TrackingHomePageState extends State<TrackingHomePage>
                   gpsError: _lastError,
                   postError: _postError,
                   sentAt: _lastSentAt,
+                  confirmedAt: _lastConfirmedAt,
+                  unconfirmed: _unconfirmed,
                 ),
 
                 if (_warnings.isNotEmpty)
@@ -697,6 +716,8 @@ class _GpsStatusTile extends StatelessWidget {
     required this.gpsError,
     required this.postError,
     required this.sentAt,
+    required this.confirmedAt,
+    required this.unconfirmed,
   });
 
   final bool isTracking;
@@ -706,6 +727,8 @@ class _GpsStatusTile extends StatelessWidget {
   final String? gpsError;
   final String? postError;
   final String? sentAt;
+  final String? confirmedAt;
+  final bool unconfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -720,11 +743,16 @@ class _GpsStatusTile extends StatelessWidget {
           height: 10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isTracking ? Colors.green : Colors.grey,
+            color: !isTracking
+                ? Colors.grey
+                : unconfirmed
+                    ? Colors.orange
+                    : Colors.green,
             boxShadow: isTracking
                 ? [
                     BoxShadow(
-                      color: Colors.green.withValues(alpha: 0.4),
+                      color: (unconfirmed ? Colors.orange : Colors.green)
+                          .withValues(alpha: 0.4),
                       blurRadius: 6,
                       spreadRadius: 2,
                     )
@@ -736,7 +764,11 @@ class _GpsStatusTile extends StatelessWidget {
           isTracking ? s.statusTracking : s.statusStopped,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: isTracking ? Colors.green : Colors.grey,
+            color: !isTracking
+                ? Colors.grey
+                : unconfirmed
+                    ? Colors.orange
+                    : Colors.green,
           ),
         ),
         subtitle: lat != null
@@ -781,6 +813,22 @@ class _GpsStatusTile extends StatelessWidget {
                       iconColor: sentAt != null ? Colors.blue : Colors.grey,
                       label: s.labelSentAt,
                       value: _formatTime(sentAt)),
+                  if (confirmedAt != null) ...[
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                        icon: Icons.check_circle_outline,
+                        iconColor: Colors.green,
+                        label: s.labelConfirmedAt,
+                        value: _formatTime(confirmedAt)),
+                  ],
+                  if (unconfirmed) ...[
+                    const SizedBox(height: 4),
+                    _InfoRow(
+                        icon: Icons.warning_amber_rounded,
+                        iconColor: Colors.orange,
+                        label: s.labelSendStatus,
+                        value: s.labelUnconfirmed),
+                  ],
                   const SizedBox(height: 4),
                   if (postError != null)
                     _InfoRow(

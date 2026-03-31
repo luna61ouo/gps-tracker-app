@@ -45,6 +45,11 @@ const int _kMaxQueueSize = 20;
 // Timestamp of the last successful send (UTC ISO-8601), persists across ticks
 String? _lastSentAt;
 
+// Delivery confirmation tracking
+DateTime? _lastSendTime;      // wall-clock time of last send
+String? _lastConfirmedAt;     // ISO-8601 UTC when bridge confirmed receipt
+int _unconfirmedCount = 0;    // consecutive sends without confirmation
+
 // Motion detection
 bool _hasMovedSinceLastFix = true; // true so first fix always happens
 double? _baselineMagnitude;
@@ -308,7 +313,12 @@ Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
         final data = jsonDecode(message as String);
         final type = data['type'] as String?;
         if (type == 'location_accessed') {
+          _lastConfirmedAt = _nowIso();
+          _unconfirmedCount = 0;
           _showLocalNotification('OpenClaw 已提取位置', '你的位置已被查詢');
+          service.invoke('deliveryConfirmed', {
+            'confirmedAt': _lastConfirmedAt,
+          });
         } else if (type == 'location_request') {
           _pendingLocationRequest = true;
           _showLocalNotification(
@@ -441,6 +451,8 @@ Future<void> _trackAndReport(ServiceInstance service) async {
             }
             _sendQueue.clear();
             _lastSentAt = _nowIso();
+            _lastSendTime = DateTime.now();
+            _unconfirmedCount++;
           } else {
             sendError = '未設定 Relay URL 或 Token（暫存 ${_sendQueue.length} 筆）';
           }
@@ -473,6 +485,8 @@ Future<void> _trackAndReport(ServiceInstance service) async {
           if (channel != null) {
             channel.sink.add(jsonEncode(encrypted));
             _lastSentAt = _nowIso();
+            _lastSendTime = DateTime.now();
+            _unconfirmedCount++;
           } else {
             sendError = '未連線至 Relay';
           }
@@ -488,6 +502,11 @@ Future<void> _trackAndReport(ServiceInstance service) async {
       sendError = '拒絕模式：不傳送位置';
     }
 
+    // Check if sends are going unconfirmed (bridge may not be running)
+    final bool unconfirmed = _unconfirmedCount >= 3 &&
+        _lastSendTime != null &&
+        DateTime.now().difference(_lastSendTime!).inSeconds > 30;
+
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
         final String notifTitle;
@@ -499,7 +518,9 @@ Future<void> _trackAndReport(ServiceInstance service) async {
           notifTitle = 'GPS 定位中・已暫停傳送';
           notifContent = '位置僅本機記錄，不主動傳送';
         } else {
-          notifTitle = sendError == null ? 'GPS 追蹤中・自動傳送' : 'GPS 追蹤中・傳送中斷';
+          notifTitle = sendError == null
+              ? (unconfirmed ? 'GPS 追蹤中・未確認送達' : 'GPS 追蹤中・自動傳送')
+              : 'GPS 追蹤中・傳送中斷';
           notifContent =
               '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
         }
@@ -516,6 +537,8 @@ Future<void> _trackAndReport(ServiceInstance service) async {
       'timestamp': timestamp,
       'postError': sendError,
       'sentAt': _lastSentAt,
+      'confirmedAt': _lastConfirmedAt,
+      'unconfirmed': unconfirmed,
       'success': true,
     });
   } catch (e) {

@@ -64,6 +64,8 @@ class AppStringsEn extends AppStrings {
   @override String get labelSendStatus => 'Send Status';
   @override String get statusNoDataHint =>
       'No location data — tap the button below to start tracking';
+  @override String get labelConfirmedAt => 'Delivery confirmed';
+  @override String get labelUnconfirmed => 'Bridge has not confirmed receipt — check that gps-bridge connect is running';
 
   // ── Tracking button ──────────────────────────────────────────────────────
   @override String get btnStop => 'Stop Tracking';
