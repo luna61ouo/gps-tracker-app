@@ -641,7 +641,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       }).toList(),
                       onChanged: (val) {
-                        setState(() => _selectedRelayUrl = val);
+                        setState(() {
+                          _selectedRelayUrl = val;
+                          _relayTestResult = null;
+                          _tokenTestResult = null;
+                          _pubKeyTestResult = null;
+                        });
                         _saveSettings();
                       },
                     ),
@@ -848,7 +853,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _tokenObscured = !_tokenObscured),
               ),
             ),
-            onChanged: (_) => _saveSettings(),
+            onChanged: (_) {
+              setState(() { _tokenTestResult = null; _pubKeyTestResult = null; });
+              _saveSettings();
+            },
           ),
           const SizedBox(height: 8),
           _testButton(label: s.testToken, testing: _tokenTesting, result: _tokenTestResult, onPressed: _testToken, enabled: _relayTestResult == 'ok', disabledHint: s.testNeedRelay),
@@ -873,7 +881,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _pubKeyObscured = !_pubKeyObscured),
               ),
             ),
-            onChanged: (_) => _saveSettings(),
+            onChanged: (_) {
+              setState(() { _pubKeyTestResult = null; });
+              _saveSettings();
+            },
           ),
           const SizedBox(height: 8),
           _testButton(label: s.testPubKey, testing: _pubKeyTesting, result: _pubKeyTestResult, onPressed: _testPubKey, enabled: _tokenTestResult == 'ok', disabledHint: s.testNeedToken),
