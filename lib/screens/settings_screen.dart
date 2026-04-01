@@ -244,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Connection tests ─────────────────────────────────────────────────
 
   Future<void> _testRelay() async {
-    setState(() { _relayTesting = true; _relayTestResult = null; });
+    setState(() { _relayTesting = true; _relayTestResult = null; _tokenTestResult = null; _pubKeyTestResult = null; });
     final relay = _selectedRelayUrl ?? '';
     if (relay.isEmpty) {
       setState(() { _relayTesting = false; _relayTestResult = 'fail'; });
@@ -270,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _testToken() async {
-    setState(() { _tokenTesting = true; _tokenTestResult = null; });
+    setState(() { _tokenTesting = true; _tokenTestResult = null; _pubKeyTestResult = null; });
     final relay = _selectedRelayUrl ?? '';
     final token = _tokenController.text.trim();
     if (relay.isEmpty || token.isEmpty) {
@@ -340,10 +340,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool testing,
     required String? result,
     required VoidCallback onPressed,
+    bool enabled = true,
+    String? disabledHint,
   }) {
     final IconData? icon;
     final Color? color;
-    if (testing) {
+    if (!enabled) {
+      icon = null; color = Colors.grey;
+    } else if (testing) {
       icon = null; color = null;
     } else if (result == 'ok') {
       icon = Icons.check_circle; color = Colors.green;
@@ -355,12 +359,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon = null; color = null;
     }
 
-    return OutlinedButton.icon(
-      onPressed: testing ? null : onPressed,
-      icon: testing
-          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-          : (icon != null ? Icon(icon, size: 16, color: color) : const SizedBox.shrink()),
-      label: Text(label, style: TextStyle(fontSize: 12, color: color)),
+    return Row(
+      children: [
+        OutlinedButton.icon(
+          onPressed: (!enabled || testing) ? null : onPressed,
+          icon: testing
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+              : (icon != null ? Icon(icon, size: 16, color: color) : const SizedBox.shrink()),
+          label: Text(label, style: TextStyle(fontSize: 12, color: color)),
+        ),
+        if (!enabled && disabledHint != null) ...[
+          const SizedBox(width: 4),
+          Tooltip(
+            message: disabledHint,
+            child: const Icon(Icons.help_outline, size: 16, color: Colors.grey),
+          ),
+        ],
+      ],
     );
   }
 
@@ -836,7 +851,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (_) => _saveSettings(),
           ),
           const SizedBox(height: 8),
-          _testButton(label: s.testToken, testing: _tokenTesting, result: _tokenTestResult, onPressed: _testToken),
+          _testButton(label: s.testToken, testing: _tokenTesting, result: _tokenTestResult, onPressed: _testToken, enabled: _relayTestResult == 'ok', disabledHint: s.testNeedRelay),
           if (_tokenTestResult != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -861,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (_) => _saveSettings(),
           ),
           const SizedBox(height: 8),
-          _testButton(label: s.testPubKey, testing: _pubKeyTesting, result: _pubKeyTestResult, onPressed: _testPubKey),
+          _testButton(label: s.testPubKey, testing: _pubKeyTesting, result: _pubKeyTestResult, onPressed: _testPubKey, enabled: _tokenTestResult == 'ok', disabledHint: s.testNeedToken),
           if (_pubKeyTestResult != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),

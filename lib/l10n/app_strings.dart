@@ -148,6 +148,8 @@ abstract class AppStrings {
   String get testPubKeyOk;
   String get testPubKeyFail;
   String get testTimeout;
+  String get testNeedRelay;
+  String get testNeedToken;
 
   // Pairing section
   String get sectionPairing;

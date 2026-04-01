@@ -176,6 +176,8 @@ class AppStringsEn extends AppStrings {
   @override String get testPubKeyOk => 'Public key verified (Bridge decrypted successfully)';
   @override String get testPubKeyFail => 'Public key mismatch (Bridge cannot decrypt)';
   @override String get testTimeout => 'Connection timed out';
+  @override String get testNeedRelay => 'Pass Relay test first';
+  @override String get testNeedToken => 'Pass Token test first';
 
   // Pairing section
   @override String get sectionPairing => 'Pairing';

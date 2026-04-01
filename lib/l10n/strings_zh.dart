@@ -173,6 +173,8 @@ class AppStringsZh extends AppStrings {
   @override String get testPubKeyOk => '公鑰配對正確（Bridge 解密成功）';
   @override String get testPubKeyFail => '公鑰配對失敗（Bridge 無法解密）';
   @override String get testTimeout => '連線逾時';
+  @override String get testNeedRelay => '請先通過 Relay 測試';
+  @override String get testNeedToken => '請先通過 Token 測試';
 
   // Pairing section
   @override String get sectionPairing => '配對設定';
