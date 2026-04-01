@@ -46,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _relayTestResult;
   String? _tokenTestResult;
   String? _pubKeyTestResult;
+  String? _testErrorDetail; // detailed error message for failed tests
   bool _relayTesting = false;
   bool _tokenTesting = false;
   bool _pubKeyTesting = false;
@@ -244,10 +245,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Connection tests ─────────────────────────────────────────────────
 
   Future<void> _testRelay() async {
-    setState(() { _relayTesting = true; _relayTestResult = null; _tokenTestResult = null; _pubKeyTestResult = null; });
+    setState(() { _relayTesting = true; _relayTestResult = null; _tokenTestResult = null; _pubKeyTestResult = null; _testErrorDetail = null; });
     final relay = _selectedRelayUrl ?? '';
     if (relay.isEmpty) {
-      setState(() { _relayTesting = false; _relayTestResult = 'fail'; });
+      setState(() { _relayTesting = false; _relayTestResult = 'fail'; _testErrorDetail = 'Relay URL is empty'; });
       return;
     }
     try {
@@ -261,75 +262,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await response.drain();
       client.close();
       // Any HTTP response (even 404) means relay server is reachable
-      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'ok'; });
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'ok'; _testErrorDetail = null; });
     } on TimeoutException {
-      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'timeout'; });
-    } catch (_) {
-      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'fail'; });
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'timeout'; _testErrorDetail = 'Connection timed out (5s)'; });
+    } catch (e) {
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'fail'; _testErrorDetail = e.toString(); });
     }
   }
 
   Future<void> _testToken() async {
-    setState(() { _tokenTesting = true; _tokenTestResult = null; _pubKeyTestResult = null; });
+    setState(() { _tokenTesting = true; _tokenTestResult = null; _pubKeyTestResult = null; _testErrorDetail = null; });
     final relay = _selectedRelayUrl ?? '';
     final token = _tokenController.text.trim();
     if (relay.isEmpty || token.isEmpty) {
-      setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
+      setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; _testErrorDetail = relay.isEmpty ? 'Relay URL is empty' : 'Token is empty'; });
       return;
     }
     WebSocketChannel? ch;
     try {
       final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
       ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
-      // Send ping immediately — relay buffers until connected
       ch.sink.add(jsonEncode({'type': 'ping'}));
-      // Wait for pong from bridge
       await ch.stream
           .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
           .where((data) => data != null && data['type'] == 'pong')
           .first
           .timeout(const Duration(seconds: 10));
-      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'ok'; });
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'ok'; _testErrorDetail = null; });
     } on TimeoutException {
-      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'timeout'; });
-    } catch (_) {
-      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'timeout'; _testErrorDetail = 'Bridge did not respond within 10s'; });
+    } catch (e) {
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; _testErrorDetail = e.toString(); });
     } finally {
       ch?.sink.close();
     }
   }
 
   Future<void> _testPubKey() async {
-    setState(() { _pubKeyTesting = true; _pubKeyTestResult = null; });
+    setState(() { _pubKeyTesting = true; _pubKeyTestResult = null; _testErrorDetail = null; });
     final relay = _selectedRelayUrl ?? '';
     final token = _tokenController.text.trim();
     final pubKey = _pubKeyController.text.trim();
     if (relay.isEmpty || token.isEmpty || pubKey.isEmpty) {
-      setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
+      final missing = [if (relay.isEmpty) 'Relay', if (token.isEmpty) 'Token', if (pubKey.isEmpty) 'PubKey'];
+      setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; _testErrorDetail = '${missing.join(", ")} is empty'; });
       return;
     }
     WebSocketChannel? ch;
     try {
       final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
       ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
-      // Send encrypted test payload
       final encrypted = await encryptGpsPayload(
         lat: 0, lng: 0, timestamp: '',
         serverPubKeyB64: pubKey,
         extraFields: {'type': 'pubkey_test'},
       );
       ch.sink.add(jsonEncode(encrypted));
-      // Wait for pubkey_ok from bridge
       await ch.stream
           .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
           .where((data) => data != null && data['type'] == 'pubkey_ok')
           .first
           .timeout(const Duration(seconds: 10));
-      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'ok'; });
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'ok'; _testErrorDetail = null; });
     } on TimeoutException {
-      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'timeout'; });
-    } catch (_) {
-      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'timeout'; _testErrorDetail = 'Bridge did not confirm decryption within 10s'; });
+    } catch (e) {
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; _testErrorDetail = e.toString(); });
     } finally {
       ch?.sink.close();
     }
@@ -663,11 +661,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           _testButton(label: s.testRelay, testing: _relayTesting, result: _relayTestResult, onPressed: _testRelay),
-          if (_relayTestResult != null)
+          if (_relayTestResult != null) ...[
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(_testResultText(s, 'relay', _relayTestResult), style: TextStyle(fontSize: 12, color: _relayTestResult == 'ok' ? Colors.green : Colors.red)),
             ),
+            if (_relayTestResult != 'ok' && _testErrorDetail != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(_testErrorDetail!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ),
+          ],
           const SizedBox(height: 24),
 
           // ── 提取確認方式 ───────────────────────────────────────────────────
@@ -860,11 +864,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           _testButton(label: s.testToken, testing: _tokenTesting, result: _tokenTestResult, onPressed: _testToken, enabled: _relayTestResult == 'ok', disabledHint: s.testNeedRelay),
-          if (_tokenTestResult != null)
+          if (_tokenTestResult != null) ...[
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(_testResultText(s, 'token', _tokenTestResult), style: TextStyle(fontSize: 12, color: _tokenTestResult == 'ok' ? Colors.green : Colors.red)),
             ),
+            if (_tokenTestResult != 'ok' && _testErrorDetail != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(_testErrorDetail!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _pubKeyController,
@@ -888,11 +898,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           _testButton(label: s.testPubKey, testing: _pubKeyTesting, result: _pubKeyTestResult, onPressed: _testPubKey, enabled: _tokenTestResult == 'ok', disabledHint: s.testNeedToken),
-          if (_pubKeyTestResult != null)
+          if (_pubKeyTestResult != null) ...[
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(_testResultText(s, 'pubkey', _pubKeyTestResult), style: TextStyle(fontSize: 12, color: _pubKeyTestResult == 'ok' ? Colors.green : Colors.red)),
             ),
+            if (_pubKeyTestResult != 'ok' && _testErrorDetail != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(_testErrorDetail!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ),
+          ],
           const SizedBox(height: 32),
 
           // ── 進階設定（Android only）────────────────────────────────────────
