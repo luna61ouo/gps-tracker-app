@@ -251,10 +251,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     try {
+      // Convert wss:// to https:// for a simple HTTP reachability check
       final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
-      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/_test_${DateTime.now().millisecondsSinceEpoch}'));
-      await ch.ready.timeout(const Duration(seconds: 5));
-      await ch.sink.close();
+      final httpUrl = base.replaceFirst('wss://', 'https://').replaceFirst('ws://', 'http://');
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 5);
+      final request = await client.getUrl(Uri.parse(httpUrl)).timeout(const Duration(seconds: 5));
+      final response = await request.close().timeout(const Duration(seconds: 5));
+      await response.drain();
+      client.close();
+      // Any HTTP response (even 404) means relay server is reachable
       if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'ok'; });
     } on TimeoutException {
       if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'timeout'; });
@@ -271,23 +277,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
       return;
     }
+    WebSocketChannel? ch;
     try {
       final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
-      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
-      await ch.ready.timeout(const Duration(seconds: 5));
-      // Send ping, wait for pong from bridge
+      ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
+      // Send ping immediately — relay buffers until connected
       ch.sink.add(jsonEncode({'type': 'ping'}));
-      final response = await ch.stream
+      // Wait for pong from bridge
+      await ch.stream
           .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
           .where((data) => data != null && data['type'] == 'pong')
           .first
           .timeout(const Duration(seconds: 10));
-      await ch.sink.close();
-      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = response != null ? 'ok' : 'fail'; });
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'ok'; });
     } on TimeoutException {
       if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'timeout'; });
     } catch (_) {
       if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
+    } finally {
+      ch?.sink.close();
     }
   }
 
@@ -300,10 +308,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
       return;
     }
+    WebSocketChannel? ch;
     try {
       final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
-      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
-      await ch.ready.timeout(const Duration(seconds: 5));
+      ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
       // Send encrypted test payload
       final encrypted = await encryptGpsPayload(
         lat: 0, lng: 0, timestamp: '',
@@ -311,17 +319,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         extraFields: {'type': 'pubkey_test'},
       );
       ch.sink.add(jsonEncode(encrypted));
-      final response = await ch.stream
+      // Wait for pubkey_ok from bridge
+      await ch.stream
           .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
           .where((data) => data != null && data['type'] == 'pubkey_ok')
           .first
           .timeout(const Duration(seconds: 10));
-      await ch.sink.close();
-      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = response != null ? 'ok' : 'fail'; });
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'ok'; });
     } on TimeoutException {
       if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'timeout'; });
     } catch (_) {
       if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
+    } finally {
+      ch?.sink.close();
     }
   }
 
