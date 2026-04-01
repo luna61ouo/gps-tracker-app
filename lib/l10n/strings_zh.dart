@@ -161,6 +161,19 @@ class AppStringsZh extends AppStrings {
       '---';
   @override String get installBridgeCopied => '已複製到剪貼簿，貼給 OpenClaw 吧！';
 
+  // Connection test
+  @override String get testRelay => '測試 Relay';
+  @override String get testToken => '測試 Token';
+  @override String get testPubKey => '測試公鑰';
+  @override String get testTesting => '測試中...';
+  @override String get testRelayOk => 'Relay 連線成功';
+  @override String get testRelayFail => 'Relay 無法連線';
+  @override String get testTokenOk => 'Bridge 已回應（Token 正確）';
+  @override String get testTokenFail => 'Bridge 未回應（Token 不符或 Bridge 未執行）';
+  @override String get testPubKeyOk => '公鑰配對正確（Bridge 解密成功）';
+  @override String get testPubKeyFail => '公鑰配對失敗（Bridge 無法解密）';
+  @override String get testTimeout => '連線逾時';
+
   // Pairing section
   @override String get sectionPairing => '配對設定';
   @override String get pairingHelpTitle => '如何取得配對資訊？';

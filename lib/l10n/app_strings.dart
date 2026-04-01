@@ -136,6 +136,19 @@ abstract class AppStrings {
   String get installBridgeDialogBody;
   String get installBridgeCopied;
 
+  // Connection test
+  String get testRelay;
+  String get testToken;
+  String get testPubKey;
+  String get testTesting;
+  String get testRelayOk;
+  String get testRelayFail;
+  String get testTokenOk;
+  String get testTokenFail;
+  String get testPubKeyOk;
+  String get testPubKeyFail;
+  String get testTimeout;
+
   // Pairing section
   String get sectionPairing;
   String get pairingHelpTitle;

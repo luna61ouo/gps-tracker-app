@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,9 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import '../services/encryption.dart';
 
 import '../config.dart';
 import '../l10n/app_strings.dart';
@@ -37,6 +41,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _initToken = '';
   String _initPubKey = '';
   String _initRelayUrl = '';
+
+  // Connection test state
+  String? _relayTestResult;
+  String? _tokenTestResult;
+  String? _pubKeyTestResult;
+  bool _relayTesting = false;
+  bool _tokenTesting = false;
+  bool _pubKeyTesting = false;
 
   String _confirmMode = kDefaultConfirmMode;
   int _bgIntervalSeconds = kDefaultBgIntervalSeconds;
@@ -227,6 +239,129 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     });
+  }
+
+  // ── Connection tests ─────────────────────────────────────────────────
+
+  Future<void> _testRelay() async {
+    setState(() { _relayTesting = true; _relayTestResult = null; });
+    final relay = _selectedRelayUrl ?? '';
+    if (relay.isEmpty) {
+      setState(() { _relayTesting = false; _relayTestResult = 'fail'; });
+      return;
+    }
+    try {
+      final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
+      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/_test_${DateTime.now().millisecondsSinceEpoch}'));
+      await ch.ready.timeout(const Duration(seconds: 5));
+      await ch.sink.close();
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'ok'; });
+    } on TimeoutException {
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'timeout'; });
+    } catch (_) {
+      if (mounted) setState(() { _relayTesting = false; _relayTestResult = 'fail'; });
+    }
+  }
+
+  Future<void> _testToken() async {
+    setState(() { _tokenTesting = true; _tokenTestResult = null; });
+    final relay = _selectedRelayUrl ?? '';
+    final token = _tokenController.text.trim();
+    if (relay.isEmpty || token.isEmpty) {
+      setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
+      return;
+    }
+    try {
+      final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
+      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
+      await ch.ready.timeout(const Duration(seconds: 5));
+      // Send ping, wait for pong from bridge
+      ch.sink.add(jsonEncode({'type': 'ping'}));
+      final response = await ch.stream
+          .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
+          .where((data) => data != null && data['type'] == 'pong')
+          .first
+          .timeout(const Duration(seconds: 10));
+      await ch.sink.close();
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = response != null ? 'ok' : 'fail'; });
+    } on TimeoutException {
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'timeout'; });
+    } catch (_) {
+      if (mounted) setState(() { _tokenTesting = false; _tokenTestResult = 'fail'; });
+    }
+  }
+
+  Future<void> _testPubKey() async {
+    setState(() { _pubKeyTesting = true; _pubKeyTestResult = null; });
+    final relay = _selectedRelayUrl ?? '';
+    final token = _tokenController.text.trim();
+    final pubKey = _pubKeyController.text.trim();
+    if (relay.isEmpty || token.isEmpty || pubKey.isEmpty) {
+      setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
+      return;
+    }
+    try {
+      final base = relay.endsWith('/') ? relay.substring(0, relay.length - 1) : relay;
+      final ch = WebSocketChannel.connect(Uri.parse('$base/ws/$token'));
+      await ch.ready.timeout(const Duration(seconds: 5));
+      // Send encrypted test payload
+      final encrypted = await encryptGpsPayload(
+        lat: 0, lng: 0, timestamp: '',
+        serverPubKeyB64: pubKey,
+        extraFields: {'type': 'pubkey_test'},
+      );
+      ch.sink.add(jsonEncode(encrypted));
+      final response = await ch.stream
+          .map((msg) { try { return jsonDecode(msg as String); } catch (_) { return null; } })
+          .where((data) => data != null && data['type'] == 'pubkey_ok')
+          .first
+          .timeout(const Duration(seconds: 10));
+      await ch.sink.close();
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = response != null ? 'ok' : 'fail'; });
+    } on TimeoutException {
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'timeout'; });
+    } catch (_) {
+      if (mounted) setState(() { _pubKeyTesting = false; _pubKeyTestResult = 'fail'; });
+    }
+  }
+
+  Widget _testButton({
+    required String label,
+    required bool testing,
+    required String? result,
+    required VoidCallback onPressed,
+  }) {
+    final IconData? icon;
+    final Color? color;
+    if (testing) {
+      icon = null; color = null;
+    } else if (result == 'ok') {
+      icon = Icons.check_circle; color = Colors.green;
+    } else if (result == 'fail') {
+      icon = Icons.error; color = Colors.red;
+    } else if (result == 'timeout') {
+      icon = Icons.timer_off; color = Colors.orange;
+    } else {
+      icon = null; color = null;
+    }
+
+    return OutlinedButton.icon(
+      onPressed: testing ? null : onPressed,
+      icon: testing
+          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+          : (icon != null ? Icon(icon, size: 16, color: color) : const SizedBox.shrink()),
+      label: Text(label, style: TextStyle(fontSize: 12, color: color)),
+    );
+  }
+
+  String _testResultText(AppStrings s, String prefix, String? result) {
+    if (result == null) return '';
+    switch (result) {
+      case 'ok': return prefix == 'relay' ? s.testRelayOk : prefix == 'token' ? s.testTokenOk : s.testPubKeyOk;
+      case 'fail': return prefix == 'relay' ? s.testRelayFail : prefix == 'token' ? s.testTokenFail : s.testPubKeyFail;
+      case 'timeout': return s.testTimeout;
+      default: return '';
+    }
   }
 
   Future<void> _showAddRelayDialog(AppStrings s) async {
@@ -496,6 +631,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          _testButton(label: s.testRelay, testing: _relayTesting, result: _relayTestResult, onPressed: _testRelay),
+          if (_relayTestResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(_testResultText(s, 'relay', _relayTestResult), style: TextStyle(fontSize: 12, color: _relayTestResult == 'ok' ? Colors.green : Colors.red)),
+            ),
           const SizedBox(height: 24),
 
           // ── 提取確認方式 ───────────────────────────────────────────────────
@@ -683,6 +825,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onChanged: (_) => _saveSettings(),
           ),
+          const SizedBox(height: 8),
+          _testButton(label: s.testToken, testing: _tokenTesting, result: _tokenTestResult, onPressed: _testToken),
+          if (_tokenTestResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(_testResultText(s, 'token', _tokenTestResult), style: TextStyle(fontSize: 12, color: _tokenTestResult == 'ok' ? Colors.green : Colors.red)),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: _pubKeyController,
@@ -701,6 +850,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onChanged: (_) => _saveSettings(),
           ),
+          const SizedBox(height: 8),
+          _testButton(label: s.testPubKey, testing: _pubKeyTesting, result: _pubKeyTestResult, onPressed: _testPubKey),
+          if (_pubKeyTestResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(_testResultText(s, 'pubkey', _pubKeyTestResult), style: TextStyle(fontSize: 12, color: _pubKeyTestResult == 'ok' ? Colors.green : Colors.red)),
+            ),
           const SizedBox(height: 32),
 
           // ── 進階設定（Android only）────────────────────────────────────────

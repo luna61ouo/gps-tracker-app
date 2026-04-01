@@ -164,6 +164,19 @@ class AppStringsEn extends AppStrings {
       '---';
   @override String get installBridgeCopied => 'Copied! Paste it to OpenClaw.';
 
+  // Connection test
+  @override String get testRelay => 'Test Relay';
+  @override String get testToken => 'Test Token';
+  @override String get testPubKey => 'Test Public Key';
+  @override String get testTesting => 'Testing...';
+  @override String get testRelayOk => 'Relay connection OK';
+  @override String get testRelayFail => 'Cannot connect to Relay';
+  @override String get testTokenOk => 'Bridge responded (Token correct)';
+  @override String get testTokenFail => 'Bridge not responding (wrong Token or Bridge not running)';
+  @override String get testPubKeyOk => 'Public key verified (Bridge decrypted successfully)';
+  @override String get testPubKeyFail => 'Public key mismatch (Bridge cannot decrypt)';
+  @override String get testTimeout => 'Connection timed out';
+
   // Pairing section
   @override String get sectionPairing => 'Pairing';
   @override String get pairingHelpTitle => 'How to get pairing info?';
