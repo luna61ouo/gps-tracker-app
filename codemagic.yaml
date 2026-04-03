@@ -17,8 +17,13 @@ workflows:
     scripts:
       - name: Generate config.dart
         script: |
-          sed -e "s|your-relay.example.com|$RELAY_HOST|g" \
+          if [ -z "$RELAY_HOST" ]; then
+            echo "ERROR: RELAY_HOST environment variable is not set"
+            exit 1
+          fi
+          sed -e "s|your-relay-server.example.com|$RELAY_HOST|g" \
               lib/config.dart.example > lib/config.dart
+          echo "Generated config.dart with relay: $RELAY_HOST"
 
       - name: Set up code signing settings on Xcode project
         script: |
