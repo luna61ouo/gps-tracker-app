@@ -29,13 +29,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 
-	<!-- 定位權限說明（App Store 審核必填） -->
+	<!-- Location permission descriptions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>此 App 需要存取您的位置以追蹤 GPS 座標。</string>
+	<string>This app tracks your GPS location and sends encrypted coordinates to your personal computer via a relay server.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>此 App 需要在背景持續存取您的位置，以便每 30 秒回報一次 GPS 座標。</string>
+	<string>This app needs continuous background location access to periodically send your encrypted GPS coordinates to your personal computer, even when the app is not in use.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>此 App 需要在背景持續存取您的位置，以便每 30 秒回報一次 GPS 座標。</string>
+	<string>This app needs continuous background location access to periodically send your encrypted GPS coordinates to your personal computer, even when the app is not in use.</string>
 
 	<!-- 背景執行模式 -->
 	<key>UIBackgroundModes</key>
