@@ -159,7 +159,7 @@ class AppStringsEn extends AppStrings {
       '---\n'
       'Please install GPS Bridge to receive encrypted GPS coordinates from my phone.\n\n'
       'pip install gps-bridge\n\n'
-      'After installation, help me set up GPS tracking (generate keypair and pairing token).\n\n'
+      'After installation, restart the Gateway, then help me set up GPS tracking (generate keypair and pairing token).\n\n'
       'Project info: https://github.com/luna61ouo/gps-bridge\n'
       '---';
   @override String get installBridgeCopied => 'Copied! Paste it to OpenClaw.';

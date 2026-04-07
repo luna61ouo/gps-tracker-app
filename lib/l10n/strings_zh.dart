@@ -156,7 +156,7 @@ class AppStringsZh extends AppStrings {
       '---\n'
       '請幫我安裝 GPS Bridge，用來接收手機的加密 GPS 座標。\n\n'
       'pip install gps-bridge\n\n'
-      '安裝完成後，請幫我設定 GPS 追蹤（產生金鑰和配對碼）。\n\n'
+      '安裝完成後，請重新啟動 Gateway，然後幫我設定 GPS 追蹤（產生金鑰和配對碼）。\n\n'
       '專案資訊：https://github.com/luna61ouo/gps-bridge\n'
       '---';
   @override String get installBridgeCopied => '已複製到剪貼簿，貼給 OpenClaw 吧！';
