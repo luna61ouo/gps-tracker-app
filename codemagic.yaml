@@ -28,10 +28,16 @@ workflows:
       - name: Initialize keychain
         script: keychain initialize
 
+      - name: Generate certificate private key
+        script: |
+          openssl genrsa -out /tmp/cert_key 2048
+
       - name: Fetch signing files (cert + profile, auto-create if missing)
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --platform IOS \
             --type IOS_APP_STORE \
+            --certificate-key=@file:/tmp/cert_key \
             --create
 
       - name: Add certs to keychain
