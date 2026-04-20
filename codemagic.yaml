@@ -40,6 +40,16 @@ workflows:
             --certificate-key=@file:/tmp/cert_key \
             --create
 
+      - name: Export signing artifacts for reuse
+        script: |
+          mkdir -p /tmp/signing-export
+          cp /tmp/cert_key /tmp/signing-export/cert_key.pem
+          cp $HOME/Library/MobileDevice/Certificates/*.p12 /tmp/signing-export/ 2>/dev/null || true
+          cp $HOME/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision /tmp/signing-export/ 2>/dev/null || true
+          ls -la /tmp/signing-export/
+          echo "=== Base64 of cert_key.pem (copy to env var CERT_PRIVATE_KEY) ==="
+          base64 -i /tmp/signing-export/cert_key.pem
+
       - name: Add certs to keychain
         script: keychain add-certificates
 
@@ -62,6 +72,7 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+      - /tmp/signing-export/*
 
     publishing:
       app_store_connect:
