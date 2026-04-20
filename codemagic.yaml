@@ -28,25 +28,11 @@ workflows:
       - name: Initialize keychain
         script: keychain initialize
 
-      - name: Fetch or create distribution certificate
+      - name: Fetch signing files (cert + profile, auto-create if missing)
         script: |
-          app-store-connect certificates list \
-            --type IOS_DISTRIBUTION \
-            --save \
-            || app-store-connect certificates create \
-               --type IOS_DISTRIBUTION \
-               --save
-
-      - name: Fetch or create provisioning profile
-        script: |
-          app-store-connect profiles list \
-            --filter-bundle-id "$BUNDLE_ID" \
-            --profile-type IOS_APP_STORE \
-            --save \
-            || app-store-connect profiles create \
-               --bundle-id "$BUNDLE_ID" \
-               --type IOS_APP_STORE \
-               --save
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
 
       - name: Add certs to keychain
         script: keychain add-certificates
