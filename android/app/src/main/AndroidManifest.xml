@@ -19,6 +19,10 @@
     <!-- 開機自啟（可選） -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- 請求關閉電池優化（防止系統殺背景服務） -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:label="claw GPS Tracker"
         android:name="${applicationName}"

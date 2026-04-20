@@ -1,6 +1,11 @@
 # App config (contains sensitive data — do not commit)
 lib/config.dart
 
+# Android signing (contains sensitive data — do not commit)
+*.jks
+*.keystore
+android/key.properties
+
 # Claude Code local settings
 .claude/
 

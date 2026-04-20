@@ -17,6 +17,17 @@ const String kRelayUrlListKey = 'relay_url_list';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeService();
+
+  // If tracking was enabled before app was killed (e.g. iOS terminated it),
+  // restart the background service immediately so it resumes on relaunch.
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool(kTrackingEnabledKey) ?? false) {
+    final running = await FlutterBackgroundService().isRunning();
+    if (!running) {
+      await FlutterBackgroundService().startService();
+    }
+  }
+
   runApp(const GpsTrackerApp());
 }
 
