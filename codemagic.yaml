@@ -13,9 +13,7 @@ workflows:
         - secrets
       vars:
         APP_STORE_APPLE_ID: "6761358773"
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.luna61ouo.clawgpstracker
+        BUNDLE_ID: "com.luna61ouo.clawgpstracker"
     scripts:
       - name: Generate config.dart
         script: |
@@ -27,21 +25,34 @@ workflows:
               lib/config.dart.example > lib/config.dart
           echo "Generated config.dart with relay: $RELAY_HOST"
 
-      - name: Fetch signing files
+      - name: Initialize keychain
+        script: keychain initialize
+
+      - name: Fetch or create distribution certificate
         script: |
-          app-store-connect fetch-signing-files \
-            "com.luna61ouo.clawgpstracker" \
-            --type IOS_APP_STORE \
-            --create
+          app-store-connect certificates list \
+            --type IOS_DISTRIBUTION \
+            --save \
+            || app-store-connect certificates create \
+               --type IOS_DISTRIBUTION \
+               --save
+
+      - name: Fetch or create provisioning profile
+        script: |
+          app-store-connect profiles list \
+            --filter-bundle-id "$BUNDLE_ID" \
+            --profile-type IOS_APP_STORE \
+            --save \
+            || app-store-connect profiles create \
+               --bundle-id "$BUNDLE_ID" \
+               --type IOS_APP_STORE \
+               --save
 
       - name: Add certs to keychain
-        script: |
-          keychain initialize
-          keychain add-certificates
+        script: keychain add-certificates
 
       - name: Set up code signing settings on Xcode project
-        script: |
-          xcode-project use-profiles
+        script: xcode-project use-profiles
 
       - name: Get Flutter packages
         script: flutter packages pub get
