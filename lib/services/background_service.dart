@@ -50,6 +50,11 @@ DateTime? _lastSendTime;      // wall-clock time of last send
 String? _lastConfirmedAt;     // ISO-8601 UTC when bridge confirmed receipt
 int _unconfirmedCount = 0;    // consecutive sends without confirmation
 
+// When this many consecutive sends are unconfirmed, assume the WebSocket
+// is silently dead (common on iOS when the OS kills network in background)
+// and force a reconnect on the next send.
+const int _kMaxUnconfirmedBeforeReset = 3;
+
 // Send log — persisted in SharedPreferences, max 50 entries
 const String kSendLogKey = 'send_log';
 const int _kMaxSendLog = 50;
@@ -391,6 +396,17 @@ void onStart(ServiceInstance service) async {
 /// Returns the existing WebSocket channel, or creates a new one.
 /// Returns null if relay URL or token are not configured.
 Future<WebSocketChannel?> _getChannel(ServiceInstance service) async {
+  // If we've been sending without any confirmation for a while, the socket
+  // is likely silently dead (iOS background, NAT timeout, etc.).
+  // Force a reconnect so the next send goes through.
+  if (_wsChannel != null && _unconfirmedCount >= _kMaxUnconfirmedBeforeReset) {
+    _wsListenSub?.cancel();
+    _wsListenSub = null;
+    _wsChannel?.sink.close();
+    _wsChannel = null;
+    _unconfirmedCount = 0;
+  }
+
   if (_wsChannel != null) return _wsChannel;
 
   final prefs = await SharedPreferences.getInstance();
