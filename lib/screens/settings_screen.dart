@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../services/encryption.dart';
+import '../services/lock_password.dart';
 
 import '../config.dart';
 import '../l10n/app_strings.dart';
@@ -58,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _batteryOptDisabled = false;
   int? _timezoneOffsetMinutes; // null = auto
   String _language = 'auto';
+  String? _lockPasswordHash; // null = no password (slider mode)
 
   @override
   void initState() {
@@ -103,6 +105,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (Platform.isAndroid) {
       final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
       if (mounted) setState(() => _batteryOptDisabled = batteryStatus.isGranted);
+    }
+    final lockHash = await getLockPasswordHash();
+    if (mounted) setState(() => _lockPasswordHash = lockHash);
+  }
+
+  // ── Screen lock password ───────────────────────────────────────────────────
+
+  Future<void> _openSetOrChangePasswordDialog() async {
+    final s = AppL10n.of(context);
+    final isChange = _lockPasswordHash != null;
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? errorText;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isChange ? s.lockDialogChangeTitle : s.lockDialogSetTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isChange) ...[
+                TextField(
+                  controller: currentCtrl,
+                  obscureText: true,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: s.lockFieldCurrentHint,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextField(
+                controller: newCtrl,
+                obscureText: true,
+                autofocus: !isChange,
+                decoration: InputDecoration(
+                  labelText: s.lockFieldNewHint,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: s.lockFieldConfirmHint,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              if (errorText != null) ...[
+                const SizedBox(height: 8),
+                Text(errorText!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(s.btnCancel),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final newPw = newCtrl.text;
+                final confirmPw = confirmCtrl.text;
+                if (newPw.length < 4) {
+                  setDialogState(() => errorText = s.lockErrorTooShort);
+                  return;
+                }
+                if (newPw != confirmPw) {
+                  setDialogState(() => errorText = s.lockErrorMismatch);
+                  return;
+                }
+                if (isChange) {
+                  final valid = await verifyLockPassword(currentCtrl.text);
+                  if (!valid) {
+                    setDialogState(
+                        () => errorText = s.lockErrorCurrentWrong);
+                    return;
+                  }
+                }
+                await setLockPassword(newPw);
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              },
+              child: Text(s.btnGotIt),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (ok == true) {
+      final newHash = await getLockPasswordHash();
+      if (mounted) {
+        setState(() => _lockPasswordHash = newHash);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.lockSnackbarSaved)),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmClearPassword() async {
+    final s = AppL10n.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.lockClearConfirmTitle),
+        content: Text(s.lockClearConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.btnCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.lockClearPassword),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await clearLockPassword();
+    if (mounted) {
+      setState(() => _lockPasswordHash = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.lockSnackbarCleared)),
+      );
     }
   }
 
@@ -910,6 +1046,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
           ],
           const SizedBox(height: 32),
+
+          // ── 螢幕鎖定 ───────────────────────────────────────────────────────
+          _SectionHeader(title: s.sectionScreenLock, icon: Icons.lock_outline),
+          const SizedBox(height: 8),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            leading: Icon(
+              _lockPasswordHash != null ? Icons.password : Icons.swipe,
+              color: _lockPasswordHash != null ? Colors.green : Colors.grey,
+            ),
+            title: Text(_lockPasswordHash != null
+                ? s.lockPasswordEnabledLabel
+                : s.lockPasswordDisabledLabel),
+            subtitle: Text(
+              _lockPasswordHash != null
+                  ? s.lockChangePassword
+                  : s.lockSetPassword,
+              style: const TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openSetOrChangePasswordDialog,
+          ),
+          if (_lockPasswordHash != null) ...[
+            const SizedBox(height: 8),
+            ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.red.shade200),
+              ),
+              leading: const Icon(Icons.lock_open, color: Colors.red),
+              title: Text(s.lockClearPassword,
+                  style: const TextStyle(color: Colors.red)),
+              trailing: const Icon(Icons.chevron_right, color: Colors.red),
+              onTap: _confirmClearPassword,
+            ),
+          ],
+          const SizedBox(height: 24),
 
           // ── 進階設定（Android only）────────────────────────────────────────
           if (Platform.isAndroid) ...[

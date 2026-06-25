@@ -7,10 +7,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'l10n/app_strings.dart';
 import 'l10n/localizations.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/background_service.dart';
+import 'services/lock_password.dart';
 
 const String kRelayUrlListKey = 'relay_url_list';
 
@@ -153,6 +155,8 @@ class TrackingHomePage extends StatefulWidget {
 class _TrackingHomePageState extends State<TrackingHomePage>
     with WidgetsBindingObserver {
   bool _showingGuide = false;
+  bool _locked = true;
+  String? _lockPasswordHash;
   bool _isTracking = false;
   double? _lastLat;
   double? _lastLng;
@@ -171,6 +175,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
   void initState() {
     super.initState();
     _showingGuide = widget.showSetupGuide;
+    if (_showingGuide) _locked = false;
     WidgetsBinding.instance.addObserver(this);
     _checkServiceStatus();
     _listenToLocationUpdates();
@@ -178,12 +183,20 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     _ensureDefaultRelay();
     _runSelfCheck();
     _startWatchdog();
+    _loadLockPasswordHash();
+  }
+
+  Future<void> _loadLockPasswordHash() async {
+    final hash = await getLockPasswordHash();
+    if (mounted) setState(() => _lockPasswordHash = hash);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _runSelfCheck();
+      _loadLockPasswordHash();
+      if (mounted && !_locked) setState(() => _locked = true);
     }
     if (!_isTracking) return;
     _notifyServiceInterval(foreground: state == AppLifecycleState.resumed);
@@ -385,6 +398,7 @@ class _TrackingHomePageState extends State<TrackingHomePage>
     }
     _checkServiceStatus();
     _runSelfCheck();
+    _loadLockPasswordHash();
   }
 
   Future<bool> _requestPermissions() async {
@@ -715,6 +729,12 @@ class _TrackingHomePageState extends State<TrackingHomePage>
           ),
         ),
       ),
+    // Lock overlay (always on top — sits above settings/help icons too)
+    if (_locked)
+      _LockOverlay(
+        passwordHash: _lockPasswordHash,
+        onUnlock: () => setState(() => _locked = false),
+      ),
     ],
     );
   }
@@ -937,6 +957,239 @@ String _formatTime(String? isoUtc) {
     return '$display ($isoUtc)';
   } catch (_) {
     return isoUtc;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 螢幕鎖定 overlay（滑桿解鎖）
+// ---------------------------------------------------------------------------
+
+class _LockOverlay extends StatefulWidget {
+  const _LockOverlay({required this.onUnlock, required this.passwordHash});
+
+  final VoidCallback onUnlock;
+  final String? passwordHash;
+
+  @override
+  State<_LockOverlay> createState() => _LockOverlayState();
+}
+
+class _LockOverlayState extends State<_LockOverlay> {
+  final _pwCtrl = TextEditingController();
+  bool _wrong = false;
+  bool _verifying = false;
+
+  @override
+  void dispose() {
+    _pwCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitPassword() async {
+    if (_verifying) return;
+    setState(() => _verifying = true);
+    final ok = await verifyLockPassword(_pwCtrl.text);
+    if (!mounted) return;
+    if (ok) {
+      widget.onUnlock();
+    } else {
+      setState(() {
+        _wrong = true;
+        _verifying = false;
+        _pwCtrl.clear();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppL10n.of(context);
+    final hasPassword = widget.passwordHash != null;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {},
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.55),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(),
+              const Icon(Icons.lock_outline, color: Colors.white, size: 56),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  hasPassword ? s.lockPasswordPrompt : s.lockHint,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                child: hasPassword
+                    ? _buildPasswordInput(s)
+                    : _SlideToUnlock(
+                        label: s.lockSlideToUnlock,
+                        onUnlock: widget.onUnlock,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordInput(AppStrings s) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _pwCtrl,
+          obscureText: true,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submitPassword(),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          decoration: InputDecoration(
+            hintText: s.lockPasswordHint,
+            hintStyle:
+                TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.15),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            errorText: _wrong ? s.lockPasswordWrong : null,
+            errorStyle: const TextStyle(
+              color: Colors.orangeAccent,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          onChanged: (_) {
+            if (_wrong) setState(() => _wrong = false);
+          },
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _verifying ? null : _submitPassword,
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.green,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          icon: const Icon(Icons.lock_open, color: Colors.white),
+          label: Text(
+            s.lockUnlockBtn,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SlideToUnlock extends StatefulWidget {
+  const _SlideToUnlock({required this.label, required this.onUnlock});
+
+  final String label;
+  final VoidCallback onUnlock;
+
+  @override
+  State<_SlideToUnlock> createState() => _SlideToUnlockState();
+}
+
+class _SlideToUnlockState extends State<_SlideToUnlock> {
+  static const double _handleSize = 56;
+  static const double _padding = 4;
+  double _dragX = 0;
+  bool _unlocked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxDrag = constraints.maxWidth - _handleSize - _padding * 2;
+        final progress =
+            maxDrag > 0 ? (_dragX / maxDrag).clamp(0.0, 1.0) : 0.0;
+        return Container(
+          height: _handleSize + _padding * 2,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius:
+                BorderRadius.circular((_handleSize + _padding * 2) / 2),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Opacity(
+                  opacity: (1 - progress).clamp(0.0, 1.0),
+                  child: Text(
+                    widget.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: _padding + _dragX,
+                top: _padding,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: _unlocked
+                      ? null
+                      : (d) {
+                          setState(() {
+                            _dragX =
+                                (_dragX + d.delta.dx).clamp(0, maxDrag);
+                          });
+                        },
+                  onHorizontalDragEnd: _unlocked
+                      ? null
+                      : (_) {
+                          if (_dragX >= maxDrag * 0.9) {
+                            setState(() {
+                              _dragX = maxDrag;
+                              _unlocked = true;
+                            });
+                            widget.onUnlock();
+                          } else {
+                            setState(() => _dragX = 0);
+                          }
+                        },
+                  child: Container(
+                    width: _handleSize,
+                    height: _handleSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.green,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withValues(alpha: 0.45),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

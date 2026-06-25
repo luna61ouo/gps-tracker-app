@@ -9,6 +9,32 @@ class AppStringsZh extends AppStrings {
   @override String get tooltipSettings => '設定';
   @override String get tooltipHelp => '說明';
 
+  // ── Screen lock ──────────────────────────────────────────────────────────
+  @override String get lockSlideToUnlock => '滑動以解鎖';
+  @override String get lockHint => '畫面已鎖定，避免口袋誤觸';
+  @override String get lockPasswordPrompt => '輸入密碼以解鎖';
+  @override String get lockPasswordHint => '密碼';
+  @override String get lockPasswordWrong => '密碼錯誤';
+  @override String get lockUnlockBtn => '解鎖';
+  @override String get sectionScreenLock => '螢幕鎖定';
+  @override String get lockPasswordEnabledLabel => '已啟用密碼解鎖';
+  @override String get lockPasswordDisabledLabel => '未設定密碼（使用滑桿解鎖）';
+  @override String get lockSetPassword => '設定解鎖密碼';
+  @override String get lockChangePassword => '更改密碼';
+  @override String get lockClearPassword => '清除密碼';
+  @override String get lockClearConfirmTitle => '清除解鎖密碼？';
+  @override String get lockClearConfirmBody => '清除後將改回使用滑桿解鎖。';
+  @override String get lockDialogSetTitle => '設定解鎖密碼';
+  @override String get lockDialogChangeTitle => '更改解鎖密碼';
+  @override String get lockFieldNewHint => '新密碼';
+  @override String get lockFieldConfirmHint => '再次輸入新密碼';
+  @override String get lockFieldCurrentHint => '目前的密碼';
+  @override String get lockErrorMismatch => '兩次輸入的密碼不一致';
+  @override String get lockErrorTooShort => '密碼至少需 4 個字元';
+  @override String get lockErrorCurrentWrong => '目前的密碼不正確';
+  @override String get lockSnackbarSaved => '密碼已儲存';
+  @override String get lockSnackbarCleared => '密碼已清除';
+
   // ── Help dialog ──────────────────────────────────────────────────────────
   @override String get helpTitle => '關於 OpenClaw GPS';
   @override String get helpIntro =>

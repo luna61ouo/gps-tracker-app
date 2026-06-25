@@ -12,6 +12,33 @@ abstract class AppStrings {
   String get tooltipSettings;
   String get tooltipHelp;
 
+  // ── Screen lock ──────────────────────────────────────────────────────────
+  String get lockSlideToUnlock;
+  String get lockHint;
+  String get lockPasswordPrompt;
+  String get lockPasswordHint;
+  String get lockPasswordWrong;
+  String get lockUnlockBtn;
+  // Settings — screen lock section
+  String get sectionScreenLock;
+  String get lockPasswordEnabledLabel;
+  String get lockPasswordDisabledLabel;
+  String get lockSetPassword;
+  String get lockChangePassword;
+  String get lockClearPassword;
+  String get lockClearConfirmTitle;
+  String get lockClearConfirmBody;
+  String get lockDialogSetTitle;
+  String get lockDialogChangeTitle;
+  String get lockFieldNewHint;
+  String get lockFieldConfirmHint;
+  String get lockFieldCurrentHint;
+  String get lockErrorMismatch;
+  String get lockErrorTooShort;
+  String get lockErrorCurrentWrong;
+  String get lockSnackbarSaved;
+  String get lockSnackbarCleared;
+
   // ── Help dialog ──────────────────────────────────────────────────────────
   String get helpTitle;
   String get helpIntro;

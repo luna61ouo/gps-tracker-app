@@ -9,6 +9,32 @@ class AppStringsEn extends AppStrings {
   @override String get tooltipSettings => 'Settings';
   @override String get tooltipHelp => 'Help';
 
+  // ── Screen lock ──────────────────────────────────────────────────────────
+  @override String get lockSlideToUnlock => 'Slide to unlock';
+  @override String get lockHint => 'Screen locked to prevent pocket taps';
+  @override String get lockPasswordPrompt => 'Enter password to unlock';
+  @override String get lockPasswordHint => 'Password';
+  @override String get lockPasswordWrong => 'Wrong password';
+  @override String get lockUnlockBtn => 'Unlock';
+  @override String get sectionScreenLock => 'Screen lock';
+  @override String get lockPasswordEnabledLabel => 'Password unlock enabled';
+  @override String get lockPasswordDisabledLabel => 'No password (slider unlock)';
+  @override String get lockSetPassword => 'Set unlock password';
+  @override String get lockChangePassword => 'Change password';
+  @override String get lockClearPassword => 'Clear password';
+  @override String get lockClearConfirmTitle => 'Clear unlock password?';
+  @override String get lockClearConfirmBody => 'Slider unlock will be used after clearing.';
+  @override String get lockDialogSetTitle => 'Set unlock password';
+  @override String get lockDialogChangeTitle => 'Change unlock password';
+  @override String get lockFieldNewHint => 'New password';
+  @override String get lockFieldConfirmHint => 'Re-enter new password';
+  @override String get lockFieldCurrentHint => 'Current password';
+  @override String get lockErrorMismatch => 'Passwords do not match';
+  @override String get lockErrorTooShort => 'Password must be at least 4 characters';
+  @override String get lockErrorCurrentWrong => 'Current password is incorrect';
+  @override String get lockSnackbarSaved => 'Password saved';
+  @override String get lockSnackbarCleared => 'Password cleared';
+
   // ── Help dialog ──────────────────────────────────────────────────────────
   @override String get helpTitle => 'About OpenClaw GPS';
   @override String get helpIntro =>
