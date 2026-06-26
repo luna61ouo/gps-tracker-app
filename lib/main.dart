@@ -1005,36 +1005,42 @@ class _LockOverlayState extends State<_LockOverlay> {
   Widget build(BuildContext context) {
     final s = AppL10n.of(context);
     final hasPassword = widget.passwordHash != null;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {},
       child: Container(
         color: Colors.black.withValues(alpha: 0.55),
         child: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(),
-              const Icon(Icons.lock_outline, color: Colors.white, size: 56),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  hasPassword ? s.lockPasswordPrompt : s.lockHint,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+          child: AnimatedPadding(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: Column(
+              children: [
+                const Spacer(),
+                const Icon(Icons.lock_outline, color: Colors.white, size: 56),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    hasPassword ? s.lockPasswordPrompt : s.lockHint,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                child: hasPassword
-                    ? _buildPasswordInput(s)
-                    : _SlideToUnlock(
-                        label: s.lockSlideToUnlock,
-                        onUnlock: widget.onUnlock,
-                      ),
-              ),
-            ],
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                  child: hasPassword
+                      ? _buildPasswordInput(s)
+                      : _SlideToUnlock(
+                          label: s.lockSlideToUnlock,
+                          onUnlock: widget.onUnlock,
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
