@@ -28,9 +28,15 @@ workflows:
       - name: Initialize keychain
         script: keychain initialize
 
-      - name: Generate certificate private key
+      - name: Restore or generate certificate private key
         script: |
-          openssl genrsa -out /tmp/cert_key 2048
+          if [ -n "$CERT_PRIVATE_KEY" ]; then
+            echo "$CERT_PRIVATE_KEY" | base64 -d > /tmp/cert_key
+            echo "Restored cert_key from CERT_PRIVATE_KEY env var"
+          else
+            openssl genrsa -out /tmp/cert_key 2048
+            echo "Generated fresh cert_key (no CERT_PRIVATE_KEY env var found)"
+          fi
 
       - name: Fetch signing files (cert + profile, auto-create if missing)
         script: |
