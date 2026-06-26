@@ -2,7 +2,7 @@ name: clawgpstracker
 description: "Encrypted GPS tracker app for OpenClaw."
 publish_to: 'none'
 
-version: 1.0.4+13
+version: 1.0.5+14
 
 environment:
   sdk: ^3.11.3
